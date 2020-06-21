@@ -1,7 +1,14 @@
 # IDEs
 .idea/
+.editorconfig
 
 # Hugo
 resources/
 public/
 .Rproj.user
+
+# R
+.Rhistory
+
+# python
+.ipynb_checkpoints

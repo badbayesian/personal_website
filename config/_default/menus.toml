@@ -4,17 +4,6 @@
 #   The weight parameter defines the order that the links will appear in.
 
 [[main]]
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-  name = "Demo"
-  url = "#hero"
-  weight = 10
-
-[[main]]
->>>>>>> d7c110d... Init
-=======
->>>>>>> fdeac37... init
   name = "Posts"
   url = "#posts"
   weight = 20
