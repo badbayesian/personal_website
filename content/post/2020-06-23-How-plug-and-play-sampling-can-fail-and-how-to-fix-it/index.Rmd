@@ -4,6 +4,7 @@ author: "badbayesian"
 date: 2020-06-23
 output: html_document
 categories: [sampling]
+math: true
 image:
   preview_only: true
 bibliography: ref.bib
@@ -49,7 +50,6 @@ $x, y, z$ are all on the surface of the sphere for a constant $r$. I will normal
 Intuitively, one would think sampling uniformly on $\theta, \phi$ would result in the points being uniformly distributed on the sphere. Unfortunately, the points tend to cluster at the north and south poles $(z = \pm 1)$ creating a biased sample. You can interact with the plot below to better see the clustering at the poles.
 
 ```{r naive_sampling, message=FALSE, warning=FALSE}
-library(ggplot2)
 library(dplyr)
 library(latex2exp)
 library(plotly)
@@ -75,17 +75,16 @@ p_naive <- plot_ly(
   layout(
     title = "Naive sampling on Sphere",
     scene = list(camera = list(eye = list(x = 0.6, y = 0.8, z = 1.25))),
-    annotations =
-      list(
-        x = 1, y = -0.1,
-        text = paste(
-          "Click and drag to move the camera,",
-          "zoom with scroll-wheel"
-        ),
-        showarrow = F, xref = "paper", yref = "paper",
-        xanchor = "right", yanchor = "auto", xshift = 0, yshift = 0,
-        font = list(size = 15, color = "red")
-      )
+    annotations = list(
+      x = 1, y = -0.1,
+      text = paste(
+        "Click and drag to move the camera,",
+        "zoom with scroll-wheel"
+      ),
+      showarrow = F, xref = "paper", yref = "paper",
+      xanchor = "right", yanchor = "auto", xshift = 0, yshift = 0,
+      font = list(size = 15, color = "red")
+    )
   )
 widgetframe::frameWidget(p_naive)
 ```
@@ -154,17 +153,16 @@ p2 <- plot_ly(
   layout(
     title = "Uniform sampling on Sphere",
     scene = list(camera = list(eye = list(x = 1.25, y = 0.25, z = 0.75))),
-    annotations =
-      list(
-        x = 1, y = -0.1,
-        text = paste(
-          "Click and drag to move the camera,",
-          "zoom with scroll-wheel"
-        ),
-        showarrow = F, xref = "paper", yref = "paper",
-        xanchor = "right", yanchor = "auto", xshift = 0, yshift = 0,
-        font = list(size = 15, color = "red")
-      )
+    annotations = list(
+      x = 1, y = -0.1,
+      text = paste(
+        "Click and drag to move the camera,",
+        "zoom with scroll-wheel"
+      ),
+      showarrow = F, xref = "paper", yref = "paper",
+      xanchor = "right", yanchor = "auto", xshift = 0, yshift = 0,
+      font = list(size = 15, color = "red")
+    )
   )
 widgetframe::frameWidget(p2)
 ```

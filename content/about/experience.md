@@ -3,7 +3,7 @@
 widget = "experience"  # See https://sourcethemes.com/academic/docs/page-builder/
 headless = true  # This file represents a page section.
 active = true  # Activate this widget? true/false
-weight = 20  # Order that this section will appear.
+weight = 40  # Order that this section will appear.
 
 title = "Experience"
 subtitle = ""
@@ -18,19 +18,51 @@ date_format = "Jan 2006"
 #   Leave `date_end` empty if it's your current employer.
 #   Begin/end multi-line descriptions with 3 quotes `"""`.
 [[experience]]
-  title = "Research Programmer"
-  company = "University of Southern California"
-  company_url = "https://www.usc.edu/"
-  location = "California"
-  date_start = "2019-01-07"
+  title = "Research Assistant"
+  company = "Becker Friendman Institute"
+  location = "Chicago"
+  date_start = "2018-06-01"
   date_end = ""
   description = """
-  Responsibilities include:
-  
-  * Development and modification of software that implements statistical methodology.
-  * Providing programming support to research projects.
-  * Creating and delivering of technical presentations and written resources.
-  * Assisting students, faculty and staff with development, testing and debugging R Packages.
+  Research assistant in the Open Source Economics Lab group for Dr. Richad W Evans.
+  - Developed parallelize differentially private and synthetic data generation process using data.table in R.
+  - Developed ML-based error correction pipeline for editing tax documents for the Internal Revenue Services (IRS) using TensorFlow, python and R.
+  - Provided research consultancy to Urban Institute and Tax Policy Center to develop synthetic data pipeline.
   """
+  
+[[experience]]
+  title = "Data Scientist"
+  company = "Civis Analytics"
+  location = "Chicago"
+  date_start = "2016-09-01"
+  date_end = "2017-09-01"
+  description = """
+  Data Scientist in Research and Development team.
+  - Researched developed geospatial capabilities including creating a pipeline of spatial analysis (R and Python), and developed interactive map plotting tool for internal and external use.
+  - Contributed to development of Causal Inference pipelines including heterogeneous treatment effect modeling, bootstrap, and 2SLS (IV regression) modeling for private sector and political marketing campaigns in R and Python.
+  - Conducted and presented ‘Hackweek’ on the nuances of analyzing digital advertising in both causal inference and predictive approaches.
+  """
+  
+[[experience]]
+  title = "Research Assistant"
+  company = "University of Chicago"
+  location = "Chicago"
+  date_start = "2016-04-01"
+  date_end = "2016-09-01"
+  description = """
+  Research Assistant for Dr. Victor Lima, Dr. Aryal Gaurab, and Dr. John List.
+  
+  - Simulated Shapley-Shubix and Banzahf power indices in R to analyze strength of political coalitions within the Chilean Government.
+  - Simulated a nonparametric price discrimination model in Matlab and R where consumers have multidimensional private information on several goods.
+  - Performed data entry and cleaning in Excel for major field experiment conducted in Chicago on the economics of early childhood interventions.
+  """
+  
+[[experience]]
+  title = "Research Assistant"
+  company = "University of Chicago Booth School of Business"
+  location = "Chicago"
+  date_start = "2015-08-01"
+  date_end = "2015-09-01"
+  description = ""
 
 +++

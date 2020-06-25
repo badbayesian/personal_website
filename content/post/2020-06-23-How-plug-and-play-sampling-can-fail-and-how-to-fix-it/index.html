@@ -4,6 +4,7 @@ author: "badbayesian"
 date: 2020-06-23
 output: html_document
 categories: [sampling]
+math: true
 image:
   preview_only: true
 bibliography: ref.bib
@@ -42,8 +43,7 @@ Image by Dmcq, distributed under a <a href="https://creativecommons.org/licenses
 <div id="naive-sampling" class="section level3">
 <h3>Naive sampling</h3>
 <p>Intuitively, one would think sampling uniformly on <span class="math inline">\(\theta, \phi\)</span> would result in the points being uniformly distributed on the sphere. Unfortunately, the points tend to cluster at the north and south poles <span class="math inline">\((z = \pm 1)\)</span> creating a biased sample. You can interact with the plot below to better see the clustering at the poles.</p>
-<pre class="r"><code>library(ggplot2)
-library(dplyr)
+<pre class="r"><code>library(dplyr)
 library(latex2exp)
 library(plotly)
 
@@ -68,21 +68,20 @@ p_naive &lt;- plot_ly(
   layout(
     title = &quot;Naive sampling on Sphere&quot;,
     scene = list(camera = list(eye = list(x = 0.6, y = 0.8, z = 1.25))),
-    annotations =
-      list(
-        x = 1, y = -0.1,
-        text = paste(
-          &quot;Click and drag to move the camera,&quot;,
-          &quot;zoom with scroll-wheel&quot;
-        ),
-        showarrow = F, xref = &quot;paper&quot;, yref = &quot;paper&quot;,
-        xanchor = &quot;right&quot;, yanchor = &quot;auto&quot;, xshift = 0, yshift = 0,
-        font = list(size = 15, color = &quot;red&quot;)
-      )
+    annotations = list(
+      x = 1, y = -0.1,
+      text = paste(
+        &quot;Click and drag to move the camera,&quot;,
+        &quot;zoom with scroll-wheel&quot;
+      ),
+      showarrow = F, xref = &quot;paper&quot;, yref = &quot;paper&quot;,
+      xanchor = &quot;right&quot;, yanchor = &quot;auto&quot;, xshift = 0, yshift = 0,
+      font = list(size = 15, color = &quot;red&quot;)
+    )
   )
 widgetframe::frameWidget(p_naive)</code></pre>
 <div id="htmlwidget-1" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
-<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/post/index_files/figure-html//widgets/widget_naive_sampling.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/post/2020-06-23-How-plug-and-play-sampling-can-fail-and-how-to-fix-it/index_files/figure-html//widgets/widget_naive_sampling.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
 <p>To explain why we get this results, lets look at a 2d circle. While the data is distributed uniformly between the angles <span class="math inline">\(\theta, \phi\)</span>, the space between each point is being stretched as the points move away from the center of the circle. The stretching generalizes to higher dimensions as shown previously with the clustering at the poles.</p>
 <figure>
 <p align="center">
@@ -140,21 +139,20 @@ p2 &lt;- plot_ly(
   layout(
     title = &quot;Uniform sampling on Sphere&quot;,
     scene = list(camera = list(eye = list(x = 1.25, y = 0.25, z = 0.75))),
-    annotations =
-      list(
-        x = 1, y = -0.1,
-        text = paste(
-          &quot;Click and drag to move the camera,&quot;,
-          &quot;zoom with scroll-wheel&quot;
-        ),
-        showarrow = F, xref = &quot;paper&quot;, yref = &quot;paper&quot;,
-        xanchor = &quot;right&quot;, yanchor = &quot;auto&quot;, xshift = 0, yshift = 0,
-        font = list(size = 15, color = &quot;red&quot;)
-      )
+    annotations = list(
+      x = 1, y = -0.1,
+      text = paste(
+        &quot;Click and drag to move the camera,&quot;,
+        &quot;zoom with scroll-wheel&quot;
+      ),
+      showarrow = F, xref = &quot;paper&quot;, yref = &quot;paper&quot;,
+      xanchor = &quot;right&quot;, yanchor = &quot;auto&quot;, xshift = 0, yshift = 0,
+      font = list(size = 15, color = &quot;red&quot;)
+    )
   )
 widgetframe::frameWidget(p2)</code></pre>
 <div id="htmlwidget-2" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
-<script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/post/index_files/figure-html//widgets/widget_sphere_sampling.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/post/2020-06-23-How-plug-and-play-sampling-can-fail-and-how-to-fix-it/index_files/figure-html//widgets/widget_sphere_sampling.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
 <p>For an encyclopedic amount of different methods to generate uniformly random points on n-spheres and in n-balls go to <a href="http://extremelearning.com.au/how-to-generate-uniformly-random-points-on-n-spheres-and-n-balls/">extreme learning</a></p>
 <p>Citations:</p>
 <div id="refs" class="references">
