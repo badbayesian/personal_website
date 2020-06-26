@@ -1,23 +1,25 @@
 ---
-title: "How plug-and-play sampling can fail and how to fix it."
+title: "How out-of-the-box sampling can fail and how to fix it"
 author: "badbayesian"
 date: 2020-06-23
 output: html_document
-categories: [sampling]
+categories: [sampling, theory]
 math: true
 image:
+  caption: ""
+  focal_point: ""
   preview_only: true
+
 bibliography: ref.bib
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-Most data scientists rely on various plug-and-play sampling methods such as with optimizing with stochastic gradient descent or cross-validating their models. However, sometimes naively sampling can lead astray with biased results. Luckily, with a little statistical theory and geometry, we can know when to naively sample and when to be a bit more clever.
+Most data scientists rely on out-of-the-box sampling methods such as optimizing with stochastic gradient descent or cross-validating their models. However, these naive sampling methods can sometimes lead data scientists astray with biased results. Luckily, with a little statistical theory and geometry, we can determine when to naively sample, and when we need to be a bit more clever.
 
 ## Experiment
 
-Suppose you're an amateur climatologist who wants to determine if there is any new damage to the ozone layer. You can't check every atmospheric point (satellite usage is expensive!) so you sample from 1000 points on the Earth's stratosphere. How should you pick those points?
+Suppose you're an amateur climatologist who wants to determine if there is any new damage to the ozone layer. You can't check every atmospheric point (satellite usage is expensive!) so you sample 1000 points on the Earth's stratosphere. How should you pick those points?
 
 <figure>
 <p align="center">
@@ -43,11 +45,11 @@ Image by Dmcq, distributed under a [CC-BY 2.0 license](https://creativecommons.o
 $$x = r sin(\phi)cos(\theta)$$
 $$y = r sin(\phi)sin(\theta)$$
 $$z = rcos(\phi)$$
-$x, y, z$ are all on the surface of the sphere for a constant $r$. I will normalized $r$ to 1 for the rest of the post.
+$x, y, z$ are all on the surface of the sphere for a constant $r$. I will normalize $r$ to 1 for the rest of this post.
 
 
 ### Naive sampling
-Intuitively, one would think sampling uniformly on $\theta, \phi$ would result in the points being uniformly distributed on the sphere. Unfortunately, the points tend to cluster at the north and south poles $(z = \pm 1)$ creating a biased sample. You can interact with the plot below to better see the clustering at the poles.
+Intuitively, one would think sampling uniformly on $\theta$ and $\phi$ would result in the points being uniformly distributed on the sphere. Unfortunately, the points tend to cluster at the north and south poles $(z = \pm 1)$, creating a biased sample. You can interact with the plot below to better see the clustering at the poles.
 
 ```{r naive_sampling, message=FALSE, warning=FALSE}
 library(dplyr)
@@ -56,12 +58,12 @@ library(plotly)
 
 n <- 1000
 
-theta_est <- runif(n, min = 0, max = pi)
-phi_est <- runif(n, min = 0, max = 2 * pi)
+theta_est_naive <- runif(n, min = 0, max = 2 * pi)
+phi_est_naive <- runif(n, min = 0, max = pi)
 
-x_est_naive <- sin(phi_est) * cos(theta_est)
-y_est_naive <- sin(phi_est) * sin(theta_est)
-z_est_naive <- cos(phi_est)
+x_est_naive <- sin(phi_est_naive) * cos(theta_est_naive)
+y_est_naive <- sin(phi_est_naive) * sin(theta_est_naive)
+z_est_naive <- cos(phi_est_naive)
 
 p_naive <- plot_ly(
   x = x_est_naive,
@@ -89,7 +91,7 @@ p_naive <- plot_ly(
 widgetframe::frameWidget(p_naive)
 ```
 
-To explain why we get this results, lets look at a 2d circle. While the data is distributed uniformly between the angles $\theta, \phi$, the space between each point is being stretched as the points move away from the center of the circle. The stretching generalizes to higher dimensions as shown previously with the clustering at the poles.
+To explain why we get these results, let's look at a 2d circle. While the data is distributed uniformly between the angles $\theta$ and $\phi$, the space between each point is being stretched as the points move away from the center of the circle. The stretching generalizes to higher dimensions as shown previously with the clustering at the poles.
 
 <figure>
 <p align="center">
@@ -100,13 +102,13 @@ Figure from @Arthur2015
 </figcaption>
 </figure>
 
-Mathematically, the proof of clustering at the poles on a sphere is shown with:
+Mathematically, the proof of clustering at the poles on a sphere is shown by:
 $$ A = \int^{2\pi}_0 \int^{\pi}_0 sin\phi d\phi d\theta$$
 $$\implies dA = sin(\phi) d\phi d\theta$$
-The marginal area is a function of $\phi$ which implies that the area density of uniformly random points is not constant. Remember that $\phi$ refers to the polar angle where $\phi = 0, \pi$ point to the poles i.e. $z \pm 1$. The marginal area will get smaller at the two poles. Hence, if points are uniformly sampled in each marginal area, the poles are more area dense points compared to the equator. To achieve uniform samples throughout the sphere, we need the sampling method to incorporate how the marginal area changes.
+The marginal area is a function of $\phi$ which implies that the area density of uniformly random points is not constant. Notice that the $\phi$ in the marginal area equation is minimized at $\phi = \{0, \pi\}$. In Cartesian coordinates, that corresponds to the North and South poles, respectively ($z \pm 1$). The marginal area will hence correspondingly get smaller at the two poles. Therefore, if points are uniformly sampled in each marginal area, the poles are more area-dense as compared to points sampled from the equator. To achieve uniform samples throughout the sphere, we need our sampling method to incorporate how the marginal area changes along the surface area.
 
 ### Sampling with theory
-So how do we debias the sample? While there are many different ways to correctly sample, I will use $\underline{\textbf{inverse transform sampling}}$ only because in this example we can derive the CDF and each sample is expensive to obtain. In other conditions, rejection sampling methods such as MCMC may be more appropriate.
+So how do we de-bias the sample? While there are many different ways to correctly sample, I will use $\underline{\textbf{inverse transform sampling}}$ only because in this example we can derive the CDF and each sample is expensive to obtain. In other conditions, rejection sampling methods such as MCMC may be more appropriate.
 
 We first need to find a suitable pdf. Suppose $v$ is a point on the sphere $S$. We need to construct a pdf such that the probability density is constant throughout the sphere. We can use a couple facts about probability and the sphere's geometry to find $f(v)$.
 
@@ -122,7 +124,7 @@ $$f(\theta) = \int_0^\pi \frac{1}{4\pi}sin(\phi) d\phi = \frac{1}{2\pi}$$
 
 $$f(\phi) = \int_0^{2\pi} \frac{1}{4\pi}sin(\phi) d\theta = \frac{sin(\phi)}{2}$$
 
-Notice that the first equation is already a constant so we dont need to transform it. The second equation is a function of $\phi$ and requires a transformation. Remember that $\phi$ refers to the polar angle where $\phi = 0, \pi$ point to the poles $z \pm 1$. Hence, we only need to adjust how we sample $\phi$ to correct the bias.
+Notice that the first equation is already a constant so we don't need to transform it. The second equation is a function of $\phi$ and requires a transformation. Remember that $\phi$ refers to the polar angle where $\phi = 0, \pi$ point to the poles $z \pm 1$. Hence, we only need to adjust how we sample $\phi$ to correct the bias.
 
 We can now use inverse transform sampling. The first step is to find the CDF of $f(\phi)$:
 $$F(\phi_0) = \int_0^{\phi_0} \frac{sin(\phi)}{2} d\phi = \frac{1}{2}(1 - cos(\phi_0)) $$
@@ -167,7 +169,37 @@ p2 <- plot_ly(
 widgetframe::frameWidget(p2)
 ```
 
-For an encyclopedic amount of different methods to generate uniformly random points on n-spheres and in n-balls go to [extreme learning](http://extremelearning.com.au/how-to-generate-uniformly-random-points-on-n-spheres-and-n-balls/)
+### tl;Dr
+Probability problems routinely go against intuition, even more so at high dimensions. Sometimes machine learning is not enough and you'll need probability theory to carry the day.
+
+```{r final, echo=FALSE}
+p3 <- plot_ly(
+  x = c(x_est, x_est_naive),
+  y = c(y_est, y_est_naive),
+  z = c(z_est, z_est_naive),
+  color = c(rep(1, n), rep(0, n)),
+  alpha = 0.75,
+  colors = c("#0000FF", "#FF0000"),
+  type = "scatter3d", mode = "markers", size = 0.1
+) %>%
+  layout(
+    title = "Biased (blue) and uniform (red) samples",
+    scene = list(camera = list(eye = list(x = 1.25, y = 0.25, z = 0.75))),
+    annotations = list(
+      x = 1, y = -0.1,
+      text = paste(
+        "Click and drag to move the camera,",
+        "zoom with scroll-wheel"
+      ),
+      showarrow = F, xref = "paper", yref = "paper",
+      xanchor = "right", yanchor = "auto", xshift = 0, yshift = 0,
+      font = list(size = 15, color = "red")
+    )
+  )
+widgetframe::frameWidget(p3)
+```
+
+For an encyclopedic amount of different methods to generate uniformly random points on n-spheres and in n-balls go to [extreme learning](http://extremelearning.com.au/how-to-generate-uniformly-random-points-on-n-spheres-and-n-balls/).
 
 
 Citations:
