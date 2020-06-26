@@ -31,6 +31,5 @@ social:
   link: https://github.com/badbayesian
 superuser: true
 title: Daniel Silva-Inclan
-user_groups: ""
 ---
 Hello, my name is Daniel Silva-Inclan. I’m a Masters Student in CS at the University of Chicago.
