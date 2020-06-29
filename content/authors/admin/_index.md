@@ -29,6 +29,9 @@ social:
 - icon: github
   icon_pack: fab
   link: https://github.com/badbayesian
+- icon: linkedin
+  icon_pack: fab
+  link: https://www.linkedin.com/in/daniel-silva-inclan-37845196/
 superuser: true
 title: Daniel Silva-Inclan
 ---

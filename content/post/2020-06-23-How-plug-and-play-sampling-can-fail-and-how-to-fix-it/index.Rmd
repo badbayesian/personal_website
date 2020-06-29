@@ -3,7 +3,7 @@ title: "How out-of-the-box sampling can fail and how to fix it"
 author: "badbayesian"
 date: 2020-06-23
 output: html_document
-categories: [sampling, theory]
+categories: [sampling, theory, R]
 math: true
 image:
   caption: ""

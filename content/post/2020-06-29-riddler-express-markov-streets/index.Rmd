@@ -1,0 +1,111 @@
+---
+title: Markov Streets (math vs python vs go) part 1
+author: badbayesian
+date: '2020-06-29'
+slug: riddler-express-markov-streets
+categories:
+  - python
+  - go
+  - theory
+tags: []
+math: true
+image:
+  caption: ""
+  focal_point: ""
+  preview_only: true
+# bibliography: ref.bib
+---
+
+This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation.
+
+## Riddler Express
+> In Riddler City, the city streets follow a grid layout, running north-south and east-west. You’re driving north when you decide to play a little game. Every time you reach an intersection, you randomly turn left or right, each with a 50 percent chance.
+>
+> After driving through 10 intersections, what is the probability that you are still driving north?
+
+This problem reminds me of when I used to walk home from work in downtown Chicago before Covid-19. To visualize the problem, lets start with the city and simulate one experiment.
+
+<figure>
+<p align="center">
+<img src="/img/2020-06-29-riddler-express-markov-streets/riddler_streets.gif">
+</p>
+<figcaption>
+Driver can turn left or right based on what direction they are facing at each intersection<br>
+[Code to generate gif](create_riddler_streets_gif.R)
+</figcaption>
+</figure>
+
+In this experiment, the driver started facing North but ended up facing South after driving through 10 intersections. With the computational approach, we would need to simulate the experiment many times and count the number of times the driver ended up facing North. While the computational method is conceptually straightforward, I find that the mathematical approach is actually easier to solve once the theory is understood.
+
+## Mathematical -- Graph Theory and Markov Chains
+
+We can mathematize the description with a network graph to describe the current direction of the driver and what direction the driver can turn to given the current direction of the driver. Specifically, the network graph 
+represents the the current direction of the driver with nodes and represents which direction the driver can turn to given the current direction of the driver with edges pointing one node (the current direction) to another nodes (the next direction). That relationship is presented visually below with either a graph or with a transition matrix (bottom right).
+
+<figure>
+<p align="center">
+<img src="/img/2020-06-29-riddler-express-markov-streets/riddle_streets_both.png">
+</p>
+<figcaption style="text-align:left;">
+How to read:<br>
+<br>
+graph -- nodes are the current direction of the driver; edges are what direction the driver can turn to.<br>
+transition matrix -- row is the current direction of the driver; column is direction the driver can turn to. <br>
+[LaTeX code](markov_streets.tex)
+</figcaption>
+</figure>
+
+A concrete example to read the graph is when the driver is facing north (on the North node), they can either turn West or East (there is an edge pointing from the North node to West node and East node). 
+
+Now that we have translated the problem into Graph Theory, we have all but solved it. There is one more property to invoke -- the probability to where the driver will turn relies only on where the driver is currently facing. In statistical language, this is called the Markov Property and this allows us to simply raise the transition matrix $n$ times. Hence, if $A$ is the transition matrix then $A^n$ is the transition matrix after $n$ steps. Or more fully:
+
+$A^n = $ the probability of the driver will ending up facing direction $x$ given the driver started with direction $y$ after driving through $n$ intersections.
+
+The solution in python is:
+
+```{python, engine.path = '/usr/bin/python3'}
+import numpy as np
+
+# transition matrix
+A = np.array([[0, 0.5 , 0, 0.5],
+              [0.5 , 0, 0.5, 0],
+              [0, 0.5 , 0, 0.5],
+              [0.5 , 0, 0.5, 0]])
+# A^n
+np.linalg.matrix_power(A, 10)
+```
+
+So reading the the transition matrix, we want the North row and North column which is the top left item.
+
+Therefore, the answer to "After driving through 10 intersections, what is the probability that you are still driving north (given you start facing north)?" is $0.5$
+
+## Extra Credit
+
+With the theory we have set up, finding the answer to the extra credit problem is straight forward as well. Just plug in the new transition matrix that incorporates the new conditions.
+
+> Extra credit: Now suppose that at every intersection, there’s a one-third chance you turn left, a one-third chance you turn right and a one-third chance you drive straight. After driving through 10 intersections, now what’s the probability that you are still driving north?
+
+<figure>
+<p align="center">
+<img src="/img/2020-06-29-riddler-express-markov-streets/riddle_streets_both_extra.png">
+</p>
+<figcaption>
+Driver can turn left, right, or drive straight through at each intersection – [LaTeX code](markov_streets_extra.tex)
+</figcaption>
+</figure>
+
+```{python, engine.path = '/usr/bin/python3'}
+import numpy as np
+
+# transition matrix
+B = np.array([[1/3, 1/3 , 0, 1/3],
+              [1/3 , 1/3, 1/3, 0],
+              [0, 1/3 , 1/3, 1/3],
+              [1/3 , 0, 1/3, 1/3]])
+# B^n
+np.linalg.matrix_power(B, 10)
+```
+
+Again, we have set up the transition matrix such that the top-left position is the probability of facing North after 10 steps given the driver started facing North.
+
+That answer is $0.25$
