@@ -23,7 +23,7 @@ This week, I will solve [538's riddler express](https://fivethirtyeight.com/feat
 >
 > After driving through 10 intersections, what is the probability that you are still driving north?
 
-This problem reminds me of when I used to walk home from work in downtown Chicago before Covid-19. To visualize the problem, lets start with the city and simulate one experiment.
+This problem reminds me of when I used to walk home from work in downtown Chicago before Covid-19. I'd somewhat randomly turn left and right with the traffic lights to get home as fast as I could. This problem is a bit different so lets first visualize the problem by simulating one experiment.
 
 <figure>
 <p align="center">
@@ -39,7 +39,7 @@ In this experiment, the driver started facing North but ended up facing South af
 
 ## Mathematical -- Graph Theory and Markov Chains
 
-We can mathematize the description with a network graph to answer the question at hand. Specifically, the network graph represents the current direction of the driver with a node and represents which direction the driver can turn to given the current direction of the driver with edges pointing one node (the current direction) to another nodes (the next direction). That relationship is presented visually below with either a graph or with a transition matrix (bottom right).
+We can mathematize the description with a network graph to answer the question at hand. Specifically, the network graph represents the current direction of the driver as a node and represents which direction the driver can turn to given the current direction of the driver as an edge pointing from one node towards another node. That relationship is presented visually below with either a graph or with a transition matrix (bottom right).
 
 <figure>
 <p align="center">
@@ -56,11 +56,13 @@ transition matrix -- row is the current direction of the driver; column is direc
 
 A concrete example to read the graph is when the driver is facing north (on the North node), they can either turn West or East (there is an edge pointing from the North node to West node and East node). 
 
-There is one more property we need to invoke before we can anwser the question. That property is that the probability to where the driver will turn relies only on where the driver is currently facing. In statistical language, this is called the Markov Property and this allows us to simply raise the transition matrix $n$ times. Hence, if $A$ is the transition matrix then $A^n$ is the transition matrix after $n$ steps. Or our current example:
+There is one more property we need to invoke before we can answer the question. That property is that the probability to where the driver will turn relies only on where the driver is currently facing. In statistical language, this is called the Markov Property and this allows us to simply raise the transition matrix $n$ times. Hence, if $A$ is the transition matrix with one step then $A^n$ is the transition matrix after $n$ steps. More concretely with our example:
 
 $A^n = $ the probability of the driver will ending up facing direction $x$ given the driver started with direction $y$ after driving through $n$ intersections.
 
-The solution in python is:
+It's worth noting that we are doing matrix multiplication as oppose to element by element multiplication. In python, `A^n` is element by element multiplication while `np.linalg.matrix_power(A, 10)` is matrix multiplication.
+
+We can calculate $A^n$ in python as:
 
 ```{python, engine.path = '/usr/bin/python3'}
 import numpy as np
@@ -80,7 +82,7 @@ Therefore, the answer is $0.5$.
 
 ### Extra Credit
 
-With the theory we have set up, finding the answer to the extra credit problem is straight forward as well. Just plug in the new transition matrix that incorporates the new conditions.
+With the theory we have set up, finding the answer to the extra credit problem is straightforward as well. Just plug in the new transition matrix that incorporates the new conditions.
 
 > Extra credit: Now suppose that at every intersection, there’s a one-third chance you turn left, a one-third chance you turn right and a one-third chance you drive straight. After driving through 10 intersections, now what’s the probability that you are still driving north?
 
@@ -114,9 +116,9 @@ That answer is $0.25$.
 
 # Simulation Study -- with python
 
-Lets say fancy math isn't your thing, you want to actually ~~conduct~~ simulate the experiments. In that case, we take similar ideas of state and flow to design our program.
+Let's say fancy math isn't your thing, and you want to actually ~~conduct~~ simulate the experiments. In that case, we take similar ideas of state and flow to design our program.
 
-~~Since we care about the state of the driver, we can create a class...~~ While it might be easy to think we need a class, we can actually answer the specific question with just a couple of functions. We can simply store the current direction of the driver as a variable within the function and just return it at the end. While we lose access to the direction of the driver during the experiment, the question at hand only cares about the end result.
+~~Since we care about the state of the driver, we can create a class...~~ While it might be easy to think we need a class, we can actually answer the specific question with just a couple of functions. We can simply store the current direction of the driver as a variable within the function and just return it at the end. While we lose access to the direction of the driver during the experiment, the question at hand only cares about the end result. This allows us to write very succinct and readable python code.
 
 ```{python, engine.path = '/usr/bin/python3'}
 import random
@@ -131,7 +133,7 @@ def experiment(rounds : int) -> str:
     return direction
 ```
 
-We need to run the experiment many times, say 1000, to be confident that our results are meaningful. The main function runs 1000 experiments and then counts the results of those experiments to get a probability for each outcome.
+We need to run the experiment many times to be confident that our results are meaningful and not just due to randomly noise. The main function runs 1000 experiments and then counts the ratio of those experiments to get a probability for each outcome.
 
 ```{python, engine.path = '/usr/bin/python3'}
 from typing import Callable
@@ -148,7 +150,7 @@ The answer is pretty close to the answer from before, $0.5$.
 
 ## Extra credit
 
-Because we modularized the code to separate `experiment()` and `main()`, we can define a new function `experiment_exta()` to replace the previous `experiment()` and drop it straight in.
+Because we modularized the code to separate `experiment()` and `main()`, we can define a new function `experiment_exta()` to replace the previous `experiment()` and drop it straight into main. Functions are first class so we can store functions as a variable.
 
 ```{python, engine.path = '/usr/bin/python3'}
 import random
