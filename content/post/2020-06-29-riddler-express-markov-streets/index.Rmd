@@ -1,11 +1,11 @@
 ---
-title: Markov Streets (math vs python vs go) part 1
+title: Markov Streets (part 1)
+summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation study."
 author: badbayesian
 date: '2020-06-29'
 slug: riddler-express-markov-streets
 categories:
   - python
-  - go
   - theory
 tags: []
 math: true
@@ -16,9 +16,9 @@ image:
 # bibliography: ref.bib
 ---
 
-This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation.
+This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation study.
 
-## Riddler Express
+# Riddler Express
 > In Riddler City, the city streets follow a grid layout, running north-south and east-west. You’re driving north when you decide to play a little game. Every time you reach an intersection, you randomly turn left or right, each with a 50 percent chance.
 >
 > After driving through 10 intersections, what is the probability that you are still driving north?
@@ -39,8 +39,7 @@ In this experiment, the driver started facing North but ended up facing South af
 
 ## Mathematical -- Graph Theory and Markov Chains
 
-We can mathematize the description with a network graph to describe the current direction of the driver and what direction the driver can turn to given the current direction of the driver. Specifically, the network graph 
-represents the the current direction of the driver with nodes and represents which direction the driver can turn to given the current direction of the driver with edges pointing one node (the current direction) to another nodes (the next direction). That relationship is presented visually below with either a graph or with a transition matrix (bottom right).
+We can mathematize the description with a network graph to answer the question at hand. Specifically, the network graph represents the current direction of the driver with a node and represents which direction the driver can turn to given the current direction of the driver with edges pointing one node (the current direction) to another nodes (the next direction). That relationship is presented visually below with either a graph or with a transition matrix (bottom right).
 
 <figure>
 <p align="center">
@@ -51,13 +50,13 @@ How to read:<br>
 <br>
 graph -- nodes are the current direction of the driver; edges are what direction the driver can turn to.<br>
 transition matrix -- row is the current direction of the driver; column is direction the driver can turn to. <br>
-[LaTeX code](markov_streets.tex)
+[LaTeX code for graph](markov_streets.tex)
 </figcaption>
 </figure>
 
 A concrete example to read the graph is when the driver is facing north (on the North node), they can either turn West or East (there is an edge pointing from the North node to West node and East node). 
 
-Now that we have translated the problem into Graph Theory, we have all but solved it. There is one more property to invoke -- the probability to where the driver will turn relies only on where the driver is currently facing. In statistical language, this is called the Markov Property and this allows us to simply raise the transition matrix $n$ times. Hence, if $A$ is the transition matrix then $A^n$ is the transition matrix after $n$ steps. Or more fully:
+There is one more property we need to invoke before we can anwser the question. That property is that the probability to where the driver will turn relies only on where the driver is currently facing. In statistical language, this is called the Markov Property and this allows us to simply raise the transition matrix $n$ times. Hence, if $A$ is the transition matrix then $A^n$ is the transition matrix after $n$ steps. Or our current example:
 
 $A^n = $ the probability of the driver will ending up facing direction $x$ given the driver started with direction $y$ after driving through $n$ intersections.
 
@@ -75,24 +74,27 @@ A = np.array([[0, 0.5 , 0, 0.5],
 np.linalg.matrix_power(A, 10)
 ```
 
-So reading the the transition matrix, we want the North row and North column which is the top left item.
+So reading the the transition matrix, we want the North row and North column which is the top left item. 
 
-Therefore, the answer to "After driving through 10 intersections, what is the probability that you are still driving north (given you start facing north)?" is $0.5$
+Therefore, the answer is $0.5$.
 
-## Extra Credit
+### Extra Credit
 
 With the theory we have set up, finding the answer to the extra credit problem is straight forward as well. Just plug in the new transition matrix that incorporates the new conditions.
 
 > Extra credit: Now suppose that at every intersection, there’s a one-third chance you turn left, a one-third chance you turn right and a one-third chance you drive straight. After driving through 10 intersections, now what’s the probability that you are still driving north?
+
+This example is almost identical to the previous example with the extra twist that now you can drive straight through. Note that if you drive straight through, then you continue to face the direction you were currently facing. In Graph Theory terms, this means that given any state, $i$, we can travel to that state, $i$, again. Graphically, that is shown with a loop connecting a node to itself.
 
 <figure>
 <p align="center">
 <img src="/img/2020-06-29-riddler-express-markov-streets/riddle_streets_both_extra.png">
 </p>
 <figcaption>
-Driver can turn left, right, or drive straight through at each intersection – [LaTeX code](markov_streets_extra.tex)
+Driver can turn left, right, or drive straight through at each intersection – [LaTeX code for graph](markov_streets_extra.tex)
 </figcaption>
 </figure>
+
 
 ```{python, engine.path = '/usr/bin/python3'}
 import numpy as np
@@ -108,4 +110,63 @@ np.linalg.matrix_power(B, 10)
 
 Again, we have set up the transition matrix such that the top-left position is the probability of facing North after 10 steps given the driver started facing North.
 
-That answer is $0.25$
+That answer is $0.25$.
+
+# Simulation Study -- with python
+
+Lets say fancy math isn't your thing, you want to actually ~~conduct~~ simulate the experiments. In that case, we take similar ideas of state and flow to design our program.
+
+~~Since we care about the state of the driver, we can create a class...~~ While it might be easy to think we need a class, we can actually answer the specific question with just a couple of functions. We can simply store the current direction of the driver as a variable within the function and just return it at the end. While we lose access to the direction of the driver during the experiment, the question at hand only cares about the end result.
+
+```{python, engine.path = '/usr/bin/python3'}
+import random
+
+def experiment(rounds : int) -> str:
+    direction = "North"
+    for _ in range(rounds):
+        if direction in ["North", "South"]:
+            direction = random.choice(["West", "East"])
+        else:
+            direction = random.choice(["North", "South"])
+    return direction
+```
+
+We need to run the experiment many times, say 1000, to be confident that our results are meaningful. The main function runs 1000 experiments and then counts the results of those experiments to get a probability for each outcome.
+
+```{python, engine.path = '/usr/bin/python3'}
+from typing import Callable
+
+def main(experiment : Callable, rounds : int, trials : int) -> dict:
+    experiments = [experiment(rounds) for _ in range(trials)]
+    return dict(zip(experiments,
+    [experiments.count(i)/trials for i in experiments]))
+    
+main(experiment, rounds=10, trials=1000)
+```
+
+The answer is pretty close to the answer from before, $0.5$.
+
+## Extra credit
+
+Because we modularized the code to separate `experiment()` and `main()`, we can define a new function `experiment_exta()` to replace the previous `experiment()` and drop it straight in.
+
+```{python, engine.path = '/usr/bin/python3'}
+import random
+
+def experiment_extra(rounds : int) -> str:
+    direction = "North"
+    for _ in range(rounds):
+        if direction == "North":
+            direction = random.choice(["North", "West", "East"])
+        elif direction == "East":
+            direction = random.choice(["North", "South", "East"])         
+        elif direction == "South":
+            direction = random.choice(["South", "West", "East"])
+        else:
+            direction = random.choice(["North", "South", "West"])
+    return direction
+
+main(experiment_extra, rounds=10, trials=1000)
+```
+
+The answer is pretty close to the mathematical answer, $0.25$.

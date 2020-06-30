@@ -1,11 +1,11 @@
 ---
-title: Markov Streets (math vs python vs go) part 1
+title: Markov Streets (part 1)
+summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation study."
 author: badbayesian
 date: '2020-06-29'
 slug: riddler-express-markov-streets
 categories:
   - python
-  - go
   - theory
 tags: []
 math: true
@@ -18,9 +18,9 @@ image:
 
 
 
-<p>This week, I will solve <a href="https://fivethirtyeight.com/features/can-you-connect-the-dots/">538’s riddler express</a> using two methods: math, and simulation.</p>
-<div id="riddler-express" class="section level2">
-<h2>Riddler Express</h2>
+<p>This week, I will solve <a href="https://fivethirtyeight.com/features/can-you-connect-the-dots/">538’s riddler express</a> using two methods: math, and simulation study.</p>
+<div id="riddler-express" class="section level1">
+<h1>Riddler Express</h1>
 <blockquote>
 <p>In Riddler City, the city streets follow a grid layout, running north-south and east-west. You’re driving north when you decide to play a little game. Every time you reach an intersection, you randomly turn left or right, each with a 50 percent chance.</p>
 <p>After driving through 10 intersections, what is the probability that you are still driving north?</p>
@@ -36,11 +36,9 @@ Driver can turn left or right based on what direction they are facing at each in
 </figcaption>
 </figure>
 <p>In this experiment, the driver started facing North but ended up facing South after driving through 10 intersections. With the computational approach, we would need to simulate the experiment many times and count the number of times the driver ended up facing North. While the computational method is conceptually straightforward, I find that the mathematical approach is actually easier to solve once the theory is understood.</p>
-</div>
 <div id="mathematical-graph-theory-and-markov-chains" class="section level2">
 <h2>Mathematical – Graph Theory and Markov Chains</h2>
-<p>We can mathematize the description with a network graph to describe the current direction of the driver and what direction the driver can turn to given the current direction of the driver. Specifically, the network graph
-represents the the current direction of the driver with nodes and represents which direction the driver can turn to given the current direction of the driver with edges pointing one node (the current direction) to another nodes (the next direction). That relationship is presented visually below with either a graph or with a transition matrix (bottom right).</p>
+<p>We can mathematize the description with a network graph to answer the question at hand. Specifically, the network graph represents the current direction of the driver with a node and represents which direction the driver can turn to given the current direction of the driver with edges pointing one node (the current direction) to another nodes (the next direction). That relationship is presented visually below with either a graph or with a transition matrix (bottom right).</p>
 <figure>
 <p align="center">
 <img src="/img/2020-06-29-riddler-express-markov-streets/riddle_streets_both.png">
@@ -50,11 +48,11 @@ How to read:<br>
 <br>
 graph – nodes are the current direction of the driver; edges are what direction the driver can turn to.<br>
 transition matrix – row is the current direction of the driver; column is direction the driver can turn to. <br>
-<a href="markov_streets.tex">LaTeX code</a>
+<a href="markov_streets.tex">LaTeX code for graph</a>
 </figcaption>
 </figure>
 <p>A concrete example to read the graph is when the driver is facing north (on the North node), they can either turn West or East (there is an edge pointing from the North node to West node and East node).</p>
-<p>Now that we have translated the problem into Graph Theory, we have all but solved it. There is one more property to invoke – the probability to where the driver will turn relies only on where the driver is currently facing. In statistical language, this is called the Markov Property and this allows us to simply raise the transition matrix <span class="math inline">\(n\)</span> times. Hence, if <span class="math inline">\(A\)</span> is the transition matrix then <span class="math inline">\(A^n\)</span> is the transition matrix after <span class="math inline">\(n\)</span> steps. Or more fully:</p>
+<p>There is one more property we need to invoke before we can anwser the question. That property is that the probability to where the driver will turn relies only on where the driver is currently facing. In statistical language, this is called the Markov Property and this allows us to simply raise the transition matrix <span class="math inline">\(n\)</span> times. Hence, if <span class="math inline">\(A\)</span> is the transition matrix then <span class="math inline">\(A^n\)</span> is the transition matrix after <span class="math inline">\(n\)</span> steps. Or our current example:</p>
 <p>$A^n = $ the probability of the driver will ending up facing direction <span class="math inline">\(x\)</span> given the driver started with direction <span class="math inline">\(y\)</span> after driving through <span class="math inline">\(n\)</span> intersections.</p>
 <p>The solution in python is:</p>
 <pre class="python"><code>import numpy as np
@@ -71,20 +69,20 @@ np.linalg.matrix_power(A, 10)</code></pre>
 ##        [0.5, 0. , 0.5, 0. ],
 ##        [0. , 0.5, 0. , 0.5]])</code></pre>
 <p>So reading the the transition matrix, we want the North row and North column which is the top left item.</p>
-<p>Therefore, the answer to “After driving through 10 intersections, what is the probability that you are still driving north (given you start facing north)?” is <span class="math inline">\(0.5\)</span></p>
-</div>
-<div id="extra-credit" class="section level2">
-<h2>Extra Credit</h2>
+<p>Therefore, the answer is <span class="math inline">\(0.5\)</span>.</p>
+<div id="extra-credit" class="section level3">
+<h3>Extra Credit</h3>
 <p>With the theory we have set up, finding the answer to the extra credit problem is straight forward as well. Just plug in the new transition matrix that incorporates the new conditions.</p>
 <blockquote>
 <p>Extra credit: Now suppose that at every intersection, there’s a one-third chance you turn left, a one-third chance you turn right and a one-third chance you drive straight. After driving through 10 intersections, now what’s the probability that you are still driving north?</p>
 </blockquote>
+<p>This example is almost identical to the previous example with the extra twist that now you can drive straight through. Note that if you drive straight through, then you continue to face the direction you were currently facing. In Graph Theory terms, this means that given any state, <span class="math inline">\(i\)</span>, we can travel to that state, <span class="math inline">\(i\)</span>, again. Graphically, that is shown with a loop connecting a node to itself.</p>
 <figure>
 <p align="center">
 <img src="/img/2020-06-29-riddler-express-markov-streets/riddle_streets_both_extra.png">
 </p>
 <figcaption>
-Driver can turn left, right, or drive straight through at each intersection – <a href="markov_streets_extra.tex">LaTeX code</a>
+Driver can turn left, right, or drive straight through at each intersection – <a href="markov_streets_extra.tex">LaTeX code for graph</a>
 </figcaption>
 </figure>
 <pre class="python"><code>import numpy as np
@@ -101,5 +99,55 @@ np.linalg.matrix_power(B, 10)</code></pre>
 ##        [0.24999577, 0.24999577, 0.2500127 , 0.24999577],
 ##        [0.24999577, 0.24999577, 0.24999577, 0.2500127 ]])</code></pre>
 <p>Again, we have set up the transition matrix such that the top-left position is the probability of facing North after 10 steps given the driver started facing North.</p>
-<p>That answer is <span class="math inline">\(0.25\)</span></p>
+<p>That answer is <span class="math inline">\(0.25\)</span>.</p>
+</div>
+</div>
+</div>
+<div id="simulation-study-with-python" class="section level1">
+<h1>Simulation Study – with python</h1>
+<p>Lets say fancy math isn’t your thing, you want to actually <del>conduct</del> simulate the experiments. In that case, we take similar ideas of state and flow to design our program.</p>
+<p><del>Since we care about the state of the driver, we can create a class…</del> While it might be easy to think we need a class, we can actually answer the specific question with just a couple of functions. We can simply store the current direction of the driver as a variable within the function and just return it at the end. While we lose access to the direction of the driver during the experiment, the question at hand only cares about the end result.</p>
+<pre class="python"><code>import random
+
+def experiment(rounds : int) -&gt; str:
+    direction = &quot;North&quot;
+    for _ in range(rounds):
+        if direction in [&quot;North&quot;, &quot;South&quot;]:
+            direction = random.choice([&quot;West&quot;, &quot;East&quot;])
+        else:
+            direction = random.choice([&quot;North&quot;, &quot;South&quot;])
+    return direction</code></pre>
+<p>We need to run the experiment many times, say 1000, to be confident that our results are meaningful. The main function runs 1000 experiments and then counts the results of those experiments to get a probability for each outcome.</p>
+<pre class="python"><code>from typing import Callable
+
+def main(experiment : Callable, rounds : int, trials : int) -&gt; dict:
+    experiments = [experiment(rounds) for _ in range(trials)]
+    return dict(zip(experiments,
+    [experiments.count(i)/trials for i in experiments]))
+    
+main(experiment, rounds=10, trials=1000)</code></pre>
+<pre><code>## {&#39;North&#39;: 0.506, &#39;South&#39;: 0.494}</code></pre>
+<p>The answer is pretty close to the answer from before, <span class="math inline">\(0.5\)</span>.</p>
+<div id="extra-credit-1" class="section level2">
+<h2>Extra credit</h2>
+<p>Because we modularized the code to separate <code>experiment()</code> and <code>main()</code>, we can define a new function <code>experiment_exta()</code> to replace the previous <code>experiment()</code> and drop it straight in.</p>
+<pre class="python"><code>import random
+
+def experiment_extra(rounds : int) -&gt; str:
+    direction = &quot;North&quot;
+    for _ in range(rounds):
+        if direction == &quot;North&quot;:
+            direction = random.choice([&quot;North&quot;, &quot;West&quot;, &quot;East&quot;])
+        elif direction == &quot;East&quot;:
+            direction = random.choice([&quot;North&quot;, &quot;South&quot;, &quot;East&quot;])         
+        elif direction == &quot;South&quot;:
+            direction = random.choice([&quot;South&quot;, &quot;West&quot;, &quot;East&quot;])
+        else:
+            direction = random.choice([&quot;North&quot;, &quot;South&quot;, &quot;West&quot;])
+    return direction
+
+main(experiment_extra, rounds=10, trials=1000)</code></pre>
+<pre><code>## {&#39;East&#39;: 0.249, &#39;West&#39;: 0.259, &#39;North&#39;: 0.245, &#39;South&#39;: 0.247}</code></pre>
+<p>The answer is pretty close to the mathematical answer, <span class="math inline">\(0.25\)</span>.</p>
+</div>
 </div>
