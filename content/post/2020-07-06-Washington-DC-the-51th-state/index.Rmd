@@ -165,6 +165,9 @@ The legal precedent for the relationship becomes less and less tenable with seve
 
 <div>
 <img src="license_plate.png" />
+<figcaption>
+The irony of DC is using the original slogan for US independence seems to have gotten lost...
+</figcaption>
 </div>
 
 As with many issues of wealth in the US, it is unsurprising that the income segregation in DC is also intertwined with race. As can be seen below, African-Americans disproportionately reside in the South and Southeast.
@@ -208,6 +211,9 @@ African Americans have a long history in DC with many struggles that continue to
 
 <div>
 <img src="blm.png" />
+<figcaption>
+Black lives matter; Defund the police
+</figcaption>
 </div>
 
 While we await the final outcome of DC's proposed statehood (the Repulican controlled Senete will most likely reject it...), let's flip to this week's Riddler Classic. 
