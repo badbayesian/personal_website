@@ -7,6 +7,7 @@ categories:
   - R
   - The Riddler
 tags: []
+math: true
 summary: "[538's the Riddler Classic](https://fivethirtyeight.com/features/can-you-stay-in-your-lane/), but this time with DC's potential statehood in mind."
 featured: no
 image:
@@ -81,24 +82,38 @@ dc_tract &lt;- tracts(state = &quot;dc&quot;)</code></pre>
 <blockquote>
 <p>If the District of Columbia were to become a state – based on 2018 figures – it would rank 49th by population (ahead of Vermont and Wyoming), 51st by area, 1st by GDP per capita, 1st by median household income, and 34th by total GDP.</p>
 </blockquote>
-<p>DC, unfortunately, shows many of the contradictions of the US. While DC may have the highest GDP per capita and median household income in the US, looking more closely into DC paints a different picture.</p>
-<div id="median-income-by-census-tract" class="section level2">
-<h2>Median Income by Census tract</h2>
+<p>DC, unfortunately, shows many of the contradictions of the US. While DC may have the highest GDP per capita and median household income in the US, looking more closely into DC paints a different picture of who owns that wealth.</p>
+<div id="median-income-by-census-tract-2018" class="section level2">
+<h2>Median Income by Census tract (2018)</h2>
 <div id="htmlwidget-2" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
 <script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/post/2020-07-06-Washington-DC-the-51th-state/index_files/figure-html//widgets/widget_unnamed-chunk-4.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
-<p>Similarly,</p>
+<p>As shown in the plot above, the median income has a clear spatial divide between the north-west and south-east parts of the city. This divide is more starkly shown with poverty rates throughout the city.</p>
 </div>
-<div id="percentage-below-the-poverty-line" class="section level2">
-<h2>Percentage below the poverty line</h2>
+<div id="poverty-rates-by-census-tract-2018" class="section level2">
+<h2>Poverty Rates by Census tract (2018)</h2>
 <div id="htmlwidget-3" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
 <script type="application/json" data-for="htmlwidget-3">{"x":{"url":"/post/2020-07-06-Washington-DC-the-51th-state/index_files/figure-html//widgets/widget_unnamed-chunk-5.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p>How any American finds these levels of poverty acceptable anywhere let alone in their nation’s capital is beyond me. The poorest tracts in the city have over 50% poverty rates. While there are a wide range of economic complications that makes creating the city budget difficult, the most egregious in my opinion, is that DC is unable to set local taxes nor a budget without its approval of Congress. DC has a nonvoting congressional representative and no senator. No other state has this sort of relationship with the federal government. Even when a super majority of Washingtonians approve a budget, congress can and has struck down the budget, repeatedly.</p>
+<p>The legal precedent for the relationship becomes less and less tenable with several protest movements establish wide spread popularity in the city.</p>
+<div>
+<p><img src="license_plate.png" /></p>
 </div>
-<div id="african-american-percentalge" class="section level1">
-<h1>African American Percentalge</h1>
+<p>As with many issues of wealth in the US, it is not surprising that the income segregation in DC also has a racial component.</p>
+</div>
+<div id="african-american-percentages-by-census-tract-2018" class="section level2">
+<h2>African American Percentages by Census tract (2018)</h2>
 <div id="htmlwidget-4" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
 <script type="application/json" data-for="htmlwidget-4">{"x":{"url":"/post/2020-07-06-Washington-DC-the-51th-state/index_files/figure-html//widgets/widget_unnamed-chunk-6.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<div>
+<p><img src="blm.png" /></p>
+</div>
+<p>If you want to see how the plots were created, check out the <a href="https://github.com/badbayesian/personal_website/blob/master/content/post/2020-07-06-Washington-DC-the-51th-state/index.Rmd">github page for this post</a>.</p>
+</div>
 <div id="answer" class="section level2">
-<h2>Answer</h2>
+<h2>Riddler</h2>
+<blockquote>
+<p>The 50 stars on the American flag are arranged in such a way that they form two rectangles. The larger rectangle is 5 stars wide, 6 stars long; the smaller rectangle is embedded inside the larger and is 4 stars wide, 5 stars long. This square-like pattern of stars is possible because the number of states (50) is twice a square number (25).</p>
+</blockquote>
 <blockquote>
 <p>It just so happens that when N equals 50, N is twice a square and N+1 is a centered pentagonal number. After 50, what is the next integer N with these properties?</p>
 </blockquote>
@@ -106,22 +121,26 @@ dc_tract &lt;- tracts(state = &quot;dc&quot;)</code></pre>
 <p><img class="bottom" src="flag.svg" />
 <img class="top" src="state_51.png" /></p>
 </div>
-<p>To</p>
-<pre class="r"><code>f &lt;- function(x){
+<p>The circle design would be pretty cool to have on the American flag, although, I’d imagine there would be animosity over which state is the center star. At least in the current version of the flag, all the stars seem to symbolize equal weight, perhaps reflecting the weight of each state in the union. I digress, lets get back to the problem.</p>
+<p>Luckily for us, we have a closed form of the centered pentagonal number which, if the next <span class="math inline">\(N\)</span> isn’t too large, we can just brute force the calculation. Let’s generate the first 100,000 centered pentagonal numbers.</p>
+<pre class="r"><code>pen_generator &lt;- function(x){
   (5*x^2 + 5*x + 2)/2
 }
 
-range &lt;- 4:10000
+range &lt;- 0:100000
 
-range2 &lt;- f(range)</code></pre>
+pen_numbers &lt;- pen_generator(range)
+head(pen_numbers, n = 10)</code></pre>
+<pre><code>##  [1]   1   6  16  31  51  76 106 141 181 226</code></pre>
+<p>Here are the first 10 centered pentagonal numbers. With this information we can look at which of the centered pentagonal numbers (<span class="math inline">\(N+1\)</span>) are one more than a number which its half is square (<span class="math inline">\(N=2S\)</span> and <span class="math inline">\(S\)</span> is a square number). I am using integer truncation (i.e. round to lowest integer) to verify if <span class="math inline">\(S\)</span> is actually a square number.</p>
 <pre class="r"><code>g &lt;- function(x){
   y &lt;- 2*(as.integer(sqrt((x - 1)/2))**2) + 1
   results &lt;- ifelse(x==y, x, NA)
   return(results)
 }
 
-stars &lt;- g(range2)
+stars &lt;- g(pen_numbers)
 stars[!is.na(stars)]</code></pre>
-<pre><code>## [1]      51   16201 5216451</code></pre>
-</div>
+<pre><code>## [1]          1         51      16201    5216451 1679680801</code></pre>
+<p>It looks like there aren’t too many numbers with this property. Out of 100,000 potential candidates only 5 and the numbers grow exponentially in size. A better mathematician may deduce why there would be exponentially gaps between each number. For now, I will answer the riddle with my answer of <span class="math inline">\(N+1 = 16201 \implies N = 16200\)</span>.</p>
 </div>

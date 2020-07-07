@@ -7,6 +7,7 @@ categories:
   - R
   - The Riddler
 tags: []
+math: true
 summary: "[538's the Riddler Classic](https://fivethirtyeight.com/features/can-you-stay-in-your-lane/), but this time with DC's potential statehood in mind."
 featured: no
 image:
@@ -82,9 +83,9 @@ As wikipedia notes in their [Statehood movement in the District of Columbia](htt
 
 > If the District of Columbia were to become a state – based on 2018 figures – it would rank 49th by population (ahead of Vermont and Wyoming), 51st by area, 1st by GDP per capita, 1st by median household income, and 34th by total GDP. 
 
-DC, unfortunately, shows many of the contradictions of the US. While DC may have the highest GDP per capita and median household income  in the US, looking more closely into DC paints a different picture.
+DC, unfortunately, shows many of the contradictions of the US. While DC may have the highest GDP per capita and median household income in the US, looking more closely into DC paints a different picture of who owns that wealth.
 
-## Median Income by Census tract
+## Median Income by Census tract (2018)
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 library(tidycensus)
 library(dplyr)
@@ -96,7 +97,7 @@ dc_dat <- get_acs(geography = "tract",
                   state = "dc",
                   geometry = TRUE,
                   year = 2018)
-pal <- colorNumeric("inferno", NULL, reverse=FALSE, n=5)
+pal <- colorNumeric("inferno", NULL, reverse=FALSE)
 dc_income <- dc_dat %>%
   filter(variable == "B18140_001")
 dc_income %>%
@@ -119,9 +120,9 @@ dc_income %>%
   widgetframe::frameWidget()
 ```
 
-Similarly, 
+As shown in the plot above, the median income has a clear spatial divide between the north-west and south-east parts of the city. This divide is more starkly shown with poverty rates throughout the city.
 
-## Percentage below the poverty line
+## Poverty Rates by Census tract (2018)
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 dc_poverty <- dc_dat %>%
   dplyr::filter(variable %in% c("B17001_002", "B17001_001"))
@@ -137,7 +138,7 @@ dc_poverty <- get_acs(geography = "tract",
   mutate(pov_rate = estimate/population) %>%
   select(GEOID, NAME, population, pov_rate)
 
-pal <- colorQuantile("inferno", NULL, reverse=FALSE, n=5)
+pal <- colorNumeric("inferno", NULL, reverse=FALSE, n=5)
 dc_poverty %>%
   leaflet() %>%
   addTiles() %>%
@@ -154,13 +155,23 @@ dc_poverty %>%
   addLegend(pal = pal, 
             values = dc_poverty$pov_rate, 
             position = "bottomright", 
-            title = "Percentage below the poverty line") %>%
+            title = "Poverity Rate in tract") %>%
   widgetframe::frameWidget()
 ```
 
-# African American Percentalge
+How any American finds these levels of poverty acceptable anywhere let alone in their nation's capital is beyond me. The poorest tracts in the city have over 50\% poverty rates. While there are a wide range of economic complications that makes creating the city budget difficult, the most egregious in my opinion, is that DC is unable to set local taxes nor a budget without its approval of Congress. DC has a nonvoting congressional representative and no senator. No other state has this sort of relationship with the federal government. Even when a super majority of Washingtonians approve a budget, congress can and has struck down the budget, repeatedly. 
+
+The legal precedent for the relationship becomes less and less tenable with several protest movements establish wide spread popularity in the city.
+
+<div>
+<img src="license_plate.png" />
+</div>
+
+As with many issues of wealth in the US, it is not surprising that the income segregation in DC also has a racial component.
+
+## African American Percentages by Census tract (2018)
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
-pal <- colorQuantile("inferno", NULL, reverse=FALSE, n=5)
+pal <- colorNumeric("inferno", NULL, reverse=FALSE, n=5)
 
 dc_race <- get_acs(geography = "tract",
                    variables = "B02001_003",
@@ -170,7 +181,7 @@ dc_race <- get_acs(geography = "tract",
                    year = 2018) %>%
   rename(population = summary_est) %>%
   filter(population>0)%>%
-  mutate(pct_af = estimate/population) %>%
+  mutate(pct_af = estimate/population * 100) %>%
   select(GEOID, NAME, population, pct_af)
 
 dc_race %>%
@@ -189,12 +200,23 @@ dc_race %>%
   addLegend(pal = pal, 
             values = dc_race$pct_af, 
             position = "bottomright", 
-            title = "Percentage of African Americans") %>%
+            title = "") %>%
   widgetframe::frameWidget()
 ```
 
 
-## Answer {#answer}
+
+
+<div>
+<img src="blm.png" />
+</div>
+
+If you want to see how the plots were created, check out the [github page for this post](https://github.com/badbayesian/personal_website/blob/master/content/post/2020-07-06-Washington-DC-the-51th-state/index.Rmd).
+
+## Riddler {#answer}
+
+> The 50 stars on the American flag are arranged in such a way that they form two rectangles. The larger rectangle is 5 stars wide, 6 stars long; the smaller rectangle is embedded inside the larger and is 4 stars wide, 5 stars long. This square-like pattern of stars is possible because the number of states (50) is twice a square number (25). 
+
 
 > It just so happens that when N equals 50, N is twice a square and N+1 is a centered pentagonal number. After 50, what is the next integer N with these properties?
 
@@ -203,17 +225,20 @@ dc_race %>%
 <img class="top" src="state_51.png" />
 </div>
 
+The circle design would be pretty cool to have on the American flag, although, I'd imagine there would be animosity over which state is the center star. At least in the current version of the flag, all the stars seem to symbolize equal weight, perhaps reflecting the weight of each state in the union. I digress, lets get back to the problem.
 
-To 
+Luckily for us, we have a closed form of the centered pentagonal number which, if the next $N$ isn't too large, we can just brute force the calculation. Let's generate the first 100,000 centered pentagonal numbers.
 ```{r}
-f <- function(x){
+pen_generator <- function(x){
   (5*x^2 + 5*x + 2)/2
 }
 
-range <- 4:10000
+range <- 0:100000
 
-range2 <- f(range)
+pen_numbers <- pen_generator(range)
+head(pen_numbers, n = 10)
 ```
+Here are the first 10 centered pentagonal numbers. With this information we can look at which of the centered pentagonal numbers ($N+1$) are one more than a number which its half is square ($N=2S$ and $S$ is a square number). I am using integer truncation (i.e. round to lowest integer) to verify if $S$ is actually a square number.
 
 ```{r}
 g <- function(x){
@@ -222,6 +247,8 @@ g <- function(x){
   return(results)
 }
 
-stars <- g(range2)
+stars <- g(pen_numbers)
 stars[!is.na(stars)]
 ```
+
+It looks like there aren't too many numbers with this property. Out of 100,000 potential candidates only 5 and the numbers grow exponentially in size. A better mathematician may deduce why there would be exponentially gaps between each number. For now, I will answer the riddle with my answer of $N+1 = 16201 \implies N = 16200$.
