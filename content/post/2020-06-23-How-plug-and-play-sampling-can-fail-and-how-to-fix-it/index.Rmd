@@ -1,6 +1,7 @@
 ---
 title: "How out-of-the-box sampling can fail and how to fix it"
 author: "badbayesian"
+summary: "The issue with out-of-the-box sampling methods and how a bit of theory can protect from biased sampling."
 date: 2020-06-23
 output: html_document
 categories: [sampling, theory, R]

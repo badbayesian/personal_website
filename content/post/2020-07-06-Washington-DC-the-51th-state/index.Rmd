@@ -1,0 +1,227 @@
+---
+title: "Washington DC, the 51th state?"
+author: badbayesian
+date: 2020-07-06
+slug: taxation-without-representation
+categories:
+  - R
+  - The Riddler
+tags: []
+summary: "[538's the Riddler Classic](https://fivethirtyeight.com/features/can-you-stay-in-your-lane/), but this time with DC's potential statehood in mind."
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+---
+
+```{css, echo=FALSE}
+#cf {
+position:relative;
+height:481px;
+width:650px;
+margin:0 auto;
+}
+
+
+#cf img {
+position:absolute;
+left:0;
+-webkit-transition: opacity 2s ease-in-out;
+-moz-transition: opacity 2s ease-in-out;
+-o-transition: opacity 2s ease-in-out;
+transition: opacity 2s ease-in-out;
+}
+
+@keyframes cf3FadeInOut {
+  0% {
+    opacity:1;
+  }
+  45% {
+    opacity:1;
+  }
+  55% {
+    opacity:0;
+  }
+  100% {
+    opacity:0;
+  }
+}
+
+#cf img.top {
+animation-name: cf3FadeInOut;
+animation-timing-function: ease-in-out;
+animation-iteration-count: infinite;
+animation-duration: 4s;
+animation-direction: alternate;
+}
+```
+
+This week's Riddler Classic holds a special place in my heart being born and raised in Washington DC. I still have my (202) - cell number. You can skip down to [here](#answer) for my answer to the riddler classic or keep reading some brief comments about DC.
+
+```{r, warning=FALSE, message=FALSE, results=FALSE}
+library(leaflet)
+library(tigris)
+options(tigris_use_cache = TRUE)
+
+DC_sf <- counties(state = "dc")
+dc_tract <- tracts(state = "dc")
+```
+
+```{r}
+DC_sf %>%
+  leaflet() %>%
+  addTiles() %>%
+  setView(lng = -77.03637, lat = 38.89511, zoom = 11) %>%
+  addPolygons(fillOpacity = 0.1,
+              color = "black") %>%
+  widgetframe::frameWidget()
+```
+
+As wikipedia notes in their [Statehood movement in the District of Columbia](https://en.wikipedia.org/wiki/Statehood_movement_in_the_District_of_Columbia) article:
+
+> If the District of Columbia were to become a state – based on 2018 figures – it would rank 49th by population (ahead of Vermont and Wyoming), 51st by area, 1st by GDP per capita, 1st by median household income, and 34th by total GDP. 
+
+DC, unfortunately, shows many of the contradictions of the US. While DC may have the highest GDP per capita and median household income  in the US, looking more closely into DC paints a different picture.
+
+## Median Income by Census tract
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library(tidycensus)
+library(dplyr)
+library(ggplot2)
+vars <- c("B18140_001", "B17001_002", "B02001_003",
+          "B17001_001", "B02001_001")
+dc_dat <- get_acs(geography = "tract",
+                  variables = vars,
+                  state = "dc",
+                  geometry = TRUE,
+                  year = 2018)
+pal <- colorNumeric("inferno", NULL, reverse=FALSE, n=5)
+dc_income <- dc_dat %>%
+  filter(variable == "B18140_001")
+dc_income %>%
+  leaflet() %>%
+  addTiles() %>%
+  setView(lng = -77.03637, lat = 38.89511, zoom = 11) %>%
+  addPolygons(fillColor = ~pal(dc_income$estimate),
+              fillOpacity = 0.7, 
+              weight = 0.2, 
+              smoothFactor = 0.2)  %>%
+  addPolygons(data = dc_tract, 
+              fillOpacity = 0.,
+              stroke=TRUE, opacity=1,
+              weight = 1.5, color="black",
+              smoothFactor = 0.5) %>%
+  addLegend(pal = pal, 
+            values = dc_income$estimate, 
+            position = "bottomright", 
+            title = "Median Income") %>%
+  widgetframe::frameWidget()
+```
+
+Similarly, 
+
+## Percentage below the poverty line
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+dc_poverty <- dc_dat %>%
+  dplyr::filter(variable %in% c("B17001_002", "B17001_001"))
+
+dc_poverty <- get_acs(geography = "tract",
+                      variables = "B17001_002",
+                      summary_var = 'B17001_001',
+                      state = "dc",
+                      geometry = TRUE,
+                      year = 2018) %>%
+  rename(population = summary_est) %>%
+  filter(population>0)%>%
+  mutate(pov_rate = estimate/population) %>%
+  select(GEOID, NAME, population, pov_rate)
+
+pal <- colorQuantile("inferno", NULL, reverse=FALSE, n=5)
+dc_poverty %>%
+  leaflet() %>%
+  addTiles() %>%
+  setView(lng = -77.03637, lat = 38.89511, zoom = 11) %>%
+  addPolygons(fillColor = ~pal(dc_poverty$pov_rate),
+              fillOpacity = 0.7, 
+              weight = 0.2, 
+              smoothFactor = 0.2)  %>%
+  addPolygons(data = dc_tract, 
+              fillOpacity = 0.,
+              stroke=TRUE, opacity=1,
+              weight = 1.5, color="black",
+              smoothFactor = 0.5) %>%
+  addLegend(pal = pal, 
+            values = dc_poverty$pov_rate, 
+            position = "bottomright", 
+            title = "Percentage below the poverty line") %>%
+  widgetframe::frameWidget()
+```
+
+# African American Percentalge
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+pal <- colorQuantile("inferno", NULL, reverse=FALSE, n=5)
+
+dc_race <- get_acs(geography = "tract",
+                   variables = "B02001_003",
+                   summary_var = 'B02001_001',
+                   state = "dc",
+                   geometry = TRUE,
+                   year = 2018) %>%
+  rename(population = summary_est) %>%
+  filter(population>0)%>%
+  mutate(pct_af = estimate/population) %>%
+  select(GEOID, NAME, population, pct_af)
+
+dc_race %>%
+  leaflet() %>%
+  addTiles() %>%
+  setView(lng = -77.03637, lat = 38.89511, zoom = 11) %>%
+  addPolygons(fillColor = ~pal(dc_race$pct_af),
+              fillOpacity = 0.7, 
+              weight = 0.2, 
+              smoothFactor = 0.2)  %>%
+  addPolygons(data = dc_tract, 
+              fillOpacity = 0.,
+              stroke=TRUE, opacity=1,
+              weight = 1.5, color="black",
+              smoothFactor = 0.5) %>%
+  addLegend(pal = pal, 
+            values = dc_race$pct_af, 
+            position = "bottomright", 
+            title = "Percentage of African Americans") %>%
+  widgetframe::frameWidget()
+```
+
+
+## Answer {#answer}
+
+> It just so happens that when N equals 50, N is twice a square and N+1 is a centered pentagonal number. After 50, what is the next integer N with these properties?
+
+<div id="cf">
+<img class="bottom" src="flag.svg" />
+<img class="top" src="state_51.png" />
+</div>
+
+
+To 
+```{r}
+f <- function(x){
+  (5*x^2 + 5*x + 2)/2
+}
+
+range <- 4:10000
+
+range2 <- f(range)
+```
+
+```{r}
+g <- function(x){
+  y <- 2*(as.integer(sqrt((x - 1)/2))**2) + 1
+  results <- ifelse(x==y, x, NA)
+  return(results)
+}
+
+stars <- g(range2)
+stars[!is.na(stars)]
+```

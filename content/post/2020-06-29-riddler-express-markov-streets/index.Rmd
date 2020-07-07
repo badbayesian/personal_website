@@ -1,12 +1,13 @@
 ---
 title: Markov Streets (part 1)
-summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation study."
+summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) about driving randomly throughout the city using two methods: math, and simulation study."
 author: badbayesian
-date: '2020-06-29'
+date: 2020-06-29
 slug: riddler-express-markov-streets
 categories:
   - python
   - theory
+  - The Riddler
 tags: []
 math: true
 image:
@@ -112,7 +113,7 @@ np.linalg.matrix_power(B, 10)
 
 Again, we have set up the transition matrix such that the top-left position is the probability of facing North after 10 steps given the driver started facing North.
 
-That answer is $0.25$.
+That answer is exactly ~~0.25~~, $0.2500127 = \frac{4,921}{19,683}$.
 
 # Simulation Study -- with python
 
@@ -171,4 +172,4 @@ def experiment_extra(rounds : int) -> str:
 main(experiment_extra, rounds=10, trials=1000)
 ```
 
-The answer is pretty close to the mathematical answer, $0.25$.
+The answer is close to the mathematical answer, $0.2500127$.

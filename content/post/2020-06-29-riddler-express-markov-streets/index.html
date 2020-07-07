@@ -1,12 +1,13 @@
 ---
 title: Markov Streets (part 1)
-summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation study."
+summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) about driving randomly throughout the city using two methods: math, and simulation study."
 author: badbayesian
-date: '2020-06-29'
+date: 2020-06-29
 slug: riddler-express-markov-streets
 categories:
   - python
   - theory
+  - The Riddler
 tags: []
 math: true
 image:
@@ -100,7 +101,7 @@ np.linalg.matrix_power(B, 10)</code></pre>
 ##        [0.24999577, 0.24999577, 0.2500127 , 0.24999577],
 ##        [0.24999577, 0.24999577, 0.24999577, 0.2500127 ]])</code></pre>
 <p>Again, we have set up the transition matrix such that the top-left position is the probability of facing North after 10 steps given the driver started facing North.</p>
-<p>That answer is <span class="math inline">\(0.25\)</span>.</p>
+<p>That answer is exactly <del>0.25</del>, <span class="math inline">\(0.2500127 = \frac{4,921}{19,683}\)</span>.</p>
 </div>
 </div>
 </div>
@@ -127,7 +128,7 @@ def main(experiment : Callable, rounds : int, trials : int) -&gt; dict:
     [experiments.count(i)/trials for i in experiments]))
     
 main(experiment, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;South&#39;: 0.51, &#39;North&#39;: 0.49}</code></pre>
+<pre><code>## {&#39;South&#39;: 0.488, &#39;North&#39;: 0.512}</code></pre>
 <p>The answer is pretty close to the answer from before, <span class="math inline">\(0.5\)</span>.</p>
 <div id="extra-credit-1" class="section level2">
 <h2>Extra credit</h2>
@@ -148,7 +149,7 @@ def experiment_extra(rounds : int) -&gt; str:
     return direction
 
 main(experiment_extra, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;East&#39;: 0.259, &#39;North&#39;: 0.248, &#39;South&#39;: 0.239, &#39;West&#39;: 0.254}</code></pre>
-<p>The answer is pretty close to the mathematical answer, <span class="math inline">\(0.25\)</span>.</p>
+<pre><code>## {&#39;East&#39;: 0.263, &#39;West&#39;: 0.258, &#39;North&#39;: 0.242, &#39;South&#39;: 0.237}</code></pre>
+<p>The answer is close to the mathematical answer, <span class="math inline">\(0.2500127\)</span>.</p>
 </div>
 </div>

@@ -1,0 +1,127 @@
+---
+title: "Washington DC, the 51th state?"
+author: badbayesian
+date: 2020-07-06
+slug: taxation-without-representation
+categories:
+  - R
+  - The Riddler
+tags: []
+summary: "[538's the Riddler Classic](https://fivethirtyeight.com/features/can-you-stay-in-your-lane/), but this time with DC's potential statehood in mind."
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+---
+
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/pymjs/pym.v1.js"></script>
+<script src="/rmarkdown-libs/widgetframe-binding/widgetframe.js"></script>
+
+
+<style type="text/css">
+#cf {
+position:relative;
+height:481px;
+width:650px;
+margin:0 auto;
+}
+
+
+#cf img {
+position:absolute;
+left:0;
+-webkit-transition: opacity 2s ease-in-out;
+-moz-transition: opacity 2s ease-in-out;
+-o-transition: opacity 2s ease-in-out;
+transition: opacity 2s ease-in-out;
+}
+
+@keyframes cf3FadeInOut {
+  0% {
+    opacity:1;
+  }
+  45% {
+    opacity:1;
+  }
+  55% {
+    opacity:0;
+  }
+  100% {
+    opacity:0;
+  }
+}
+
+#cf img.top {
+animation-name: cf3FadeInOut;
+animation-timing-function: ease-in-out;
+animation-iteration-count: infinite;
+animation-duration: 4s;
+animation-direction: alternate;
+}
+</style>
+<p>This week’s Riddler Classic holds a special place in my heart being born and raised in Washington DC. I still have my (202) - cell number. You can skip down to <a href="#answer">here</a> for my answer to the riddler classic or keep reading some brief comments about DC.</p>
+<pre class="r"><code>library(leaflet)
+library(tigris)
+options(tigris_use_cache = TRUE)
+
+DC_sf &lt;- counties(state = &quot;dc&quot;)
+dc_tract &lt;- tracts(state = &quot;dc&quot;)</code></pre>
+<pre class="r"><code>DC_sf %&gt;%
+  leaflet() %&gt;%
+  addTiles() %&gt;%
+  setView(lng = -77.03637, lat = 38.89511, zoom = 11) %&gt;%
+  addPolygons(fillOpacity = 0.1,
+              color = &quot;black&quot;) %&gt;%
+  widgetframe::frameWidget()</code></pre>
+<div id="htmlwidget-1" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/post/2020-07-06-Washington-DC-the-51th-state/index_files/figure-html//widgets/widget_unnamed-chunk-3.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p>As wikipedia notes in their <a href="https://en.wikipedia.org/wiki/Statehood_movement_in_the_District_of_Columbia">Statehood movement in the District of Columbia</a> article:</p>
+<blockquote>
+<p>If the District of Columbia were to become a state – based on 2018 figures – it would rank 49th by population (ahead of Vermont and Wyoming), 51st by area, 1st by GDP per capita, 1st by median household income, and 34th by total GDP.</p>
+</blockquote>
+<p>DC, unfortunately, shows many of the contradictions of the US. While DC may have the highest GDP per capita and median household income in the US, looking more closely into DC paints a different picture.</p>
+<div id="median-income-by-census-tract" class="section level2">
+<h2>Median Income by Census tract</h2>
+<div id="htmlwidget-2" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/post/2020-07-06-Washington-DC-the-51th-state/index_files/figure-html//widgets/widget_unnamed-chunk-4.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p>Similarly,</p>
+</div>
+<div id="percentage-below-the-poverty-line" class="section level2">
+<h2>Percentage below the poverty line</h2>
+<div id="htmlwidget-3" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-3">{"x":{"url":"/post/2020-07-06-Washington-DC-the-51th-state/index_files/figure-html//widgets/widget_unnamed-chunk-5.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+</div>
+<div id="african-american-percentalge" class="section level1">
+<h1>African American Percentalge</h1>
+<div id="htmlwidget-4" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-4">{"x":{"url":"/post/2020-07-06-Washington-DC-the-51th-state/index_files/figure-html//widgets/widget_unnamed-chunk-6.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<div id="answer" class="section level2">
+<h2>Answer</h2>
+<blockquote>
+<p>It just so happens that when N equals 50, N is twice a square and N+1 is a centered pentagonal number. After 50, what is the next integer N with these properties?</p>
+</blockquote>
+<div id="cf">
+<p><img class="bottom" src="flag.svg" />
+<img class="top" src="state_51.png" /></p>
+</div>
+<p>To</p>
+<pre class="r"><code>f &lt;- function(x){
+  (5*x^2 + 5*x + 2)/2
+}
+
+range &lt;- 4:10000
+
+range2 &lt;- f(range)</code></pre>
+<pre class="r"><code>g &lt;- function(x){
+  y &lt;- 2*(as.integer(sqrt((x - 1)/2))**2) + 1
+  results &lt;- ifelse(x==y, x, NA)
+  return(results)
+}
+
+stars &lt;- g(range2)
+stars[!is.na(stars)]</code></pre>
+<pre><code>## [1]      51   16201 5216451</code></pre>
+</div>
+</div>
