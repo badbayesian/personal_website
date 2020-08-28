@@ -25,9 +25,9 @@ date_format = "Jan 2006"
   date_end = ""
   description = """
   Research assistant in the Open Source Economics Lab group for Dr. Richad W Evans.
-  - Developed parallelize differentially private and synthetic data generation process using data.table in R.
-  - Developed ML-based error correction pipeline for editing tax documents for the Internal Revenue Services (IRS) using TensorFlow, python and R.
-  - Provided research consultancy to Urban Institute and Tax Policy Center to develop synthetic data pipeline.
+  - Developed parallelized and scaleable differentially private and synthetic data generation process for PUF dataset (tax data).
+  - Developed stop-gap data deanonymizer to process aggregated Census data for tax analysis.
+  - Developed ML-based error correction pipeline proposal for editing tax documents for the Internal Revenue Services (IRS).
   """
   
 [[experience]]
@@ -38,9 +38,10 @@ date_format = "Jan 2006"
   date_end = "2017-09-01"
   description = """
   Data Scientist in Research and Development team.
-  - Researched developed geospatial capabilities including creating a pipeline of spatial analysis (R and Python), and developed interactive map plotting tool for internal and external use.
-  - Contributed to development of Causal Inference pipelines including heterogeneous treatment effect modeling, bootstrap, and 2SLS (IV regression) modeling for private sector and political marketing campaigns in R and Python.
-  - Conducted and presented ‘Hackweek’ on the nuances of analyzing digital advertising in both causal inference and predictive approaches.
+  - Researched & developed geospatial capabilities including creating a pipeline of spatial analysis (R, Python, QGIS, PostgreSQL), and developed interactive map plotting tool for internal and external use.
+  - Developed unsupervised snack advertisement pipeline for Fortune-50 food company and Boston Consulting Group to cluster and visualize customer segmentation and determine opportunities for digital advertisement. 
+  - Developed pipeline to verify effectiveness of current and future Verizon digital marketing campaigns through heterogeneous treatment effect modeling.
+  - Developed app and report to score and visualize gerrymandering metrics across local and state jurisdictions in the US.
   """
   
 [[experience]]
@@ -51,18 +52,8 @@ date_format = "Jan 2006"
   date_end = "2016-09-01"
   description = """
   Research Assistant for Dr. Victor Lima, Dr. Aryal Gaurab, and Dr. John List.
-  
   - Simulated Shapley-Shubix and Banzahf power indices in R to analyze strength of political coalitions within the Chilean Government.
   - Simulated a nonparametric price discrimination model in Matlab and R where consumers have multidimensional private information on several goods.
   - Performed data entry and cleaning in Excel for major field experiment conducted in Chicago on the economics of early childhood interventions.
   """
-  
-[[experience]]
-  title = "Research Assistant"
-  company = "University of Chicago Booth School of Business"
-  location = "Chicago"
-  date_start = "2015-08-01"
-  date_end = "2015-09-01"
-  description = ""
-
 +++

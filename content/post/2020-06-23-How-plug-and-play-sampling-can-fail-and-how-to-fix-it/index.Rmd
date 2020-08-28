@@ -194,8 +194,7 @@ p3 <- plot_ly(
       showarrow = F, xref = "paper", yref = "paper",
       xanchor = "right", yanchor = "auto", xshift = 0, yshift = 0,
       font = list(size = 15, color = "red")
-    )
-  )
+    ))
 widgetframe::frameWidget(p3)
 ```
 

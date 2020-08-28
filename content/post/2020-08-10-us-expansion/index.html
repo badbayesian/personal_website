@@ -1,0 +1,179 @@
+---
+title: Visualizing US Continental growth from 1783 - today
+author: badbayesian
+date: '2020-08-10'
+categories:
+  - R
+  - maps
+  - US
+  - animation
+summary: "With animations as well!"
+featured: no
+image:
+  focal_point: "Center"
+  preview_only: yes
+---
+
+
+
+<p>On September 3, 1783, the United States and Great Britain signed the Treaty of Paris. The Treaty ended the American Revolution, with Great Britain recognizing the United States as an independent nation. While the United States has existed for less than 250 years, its political boundaries have increased over 360%. We can use R to animate the growth of US borders over time.</p>
+<p>To present the borders of the US over time, we can use shapefiles to store geospatial information that can be plotted and modified. Luckily for us, the Newberry Library stores an atlas of the historical county boundaries of the US. You can either download the files on their website or use their package <code>USAboundaries</code> for direct access.</p>
+<pre class="r"><code>install.packages(&quot;USAboundaries&quot;)</code></pre>
+<pre><code>## Installing package into &#39;/home/badbayesian/R/x86_64-pc-linux-gnu-library/4.0&#39;
+## (as &#39;lib&#39; is unspecified)</code></pre>
+<pre class="r"><code># Or 
+# devtools::install_github(&quot;ropensci/USAboundaries&quot;)
+# devtools::install_github(&quot;ropensci/USAboundariesData&quot;)</code></pre>
+<p>This post will focus on just the continental US. With a simple <code>lapply</code> call (or <code>map</code> in other languages), we can download the US’ state boundaries for every year in the data set.</p>
+<pre class="r"><code>library(USAboundaries)
+library(dplyr)
+library(sf)
+continental_us &lt;- state_codes$state_name[-c(2, 12, 52:69)]
+dates &lt;- seq(as.Date(&quot;1783-09-03&quot;), as.Date(&quot;2000-12-31&quot;), by = &quot;years&quot;)
+maps &lt;- lapply(dates, function(date) {
+  map &lt;- us_states(map_date = date, resolution = &quot;high&quot;, states = continental_us)
+  map$year &lt;- date
+  map$states &lt;- TRUE
+  map
+}) %&gt;%
+  bind_rows()</code></pre>
+<p>The final object, <code>maps</code>, is a spatial dataframe allowing for all operations of both dataframes and spatial objects. In our case, each row corresponds to information of a state at some point in time. The geometry column stores the polygon which defines the boundaries.</p>
+<pre class="r"><code>head(maps)</code></pre>
+<pre><code>## Simple feature collection with 6 features and 20 fields
+## geometry type:  MULTIPOLYGON
+## dimension:      XY
+## bbox:           xmin: -91.65403 ymin: 30.35712 xmax: -66.94993 ymax: 47.4597
+## geographic CRS: WGS 84
+##   id_num           name       id version start_date   end_date
+## 1     22    Connecticut ct_state       1 1783-09-03 1786-09-13
+## 2     28       Delaware de_state       1 1783-09-03 2000-12-31
+## 3     42        Georgia ga_state       1 1783-09-03 1798-04-06
+## 4     76  Massachusetts ma_state       1 1783-09-03 1804-12-30
+## 5     81       Maryland md_state       1 1783-09-03 1791-03-29
+## 6    116 North Carolina nc_state       1 1783-09-03 1790-04-01
+##                                                                                                                                                                                                                        change
+## 1                                                                                                            Connecticut became an independent state on 4 July 1776. The map depicts state boundaries as of 3 September 1783.
+## 2 The three Lower Counties, of KENT, NEW CASTLE, and SUSSEX became an independent state on 4 July 1776. The name Delaware was formally adopted on 20 September 1776. The map depicts state boundaries as of 3 September 1783.
+## 3                                                                                                                Georgia became an independent state on 4 July 1776. The map depicts state boundaries as of 3 September 1783.
+## 4                                                                            Massachusetts, including the area of Maine, became an independent state on 4 July 1776. The map depicts state boundaries as of 3 September 1783.
+## 5                                                                                                               Maryland became an independent state on 4 July 1776. The map depicts state boundaries as of 3 September 1783.
+## 6                                                                                                         North Carolina became an independent state on 4 July 1776. The map depicts state boundaries as of 3 September 1783.
+##                                         citation  start_n    end_n area_sqmi
+## 1                  (Declaration of Independence) 17830903 17860913      4982
+## 2 (Declaration of Independence; Swindler, 2:197) 17830903 20001231      2013
+## 3                  (Declaration of Independence) 17830903 17980406    152080
+## 4                  (Declaration of Independence) 17830903 18041230     40682
+## 5                  (Declaration of Independence) 17830903 17910329     10065
+## 6                  (Declaration of Independence) 17830903 17900401     91507
+##   terr_type      full_name abbr_name                  name_start state_abbr
+## 1     State    Connecticut        CT    Connecticut (1783-09-03)         CT
+## 2     State       Delaware        DE       Delaware (1783-09-03)         DE
+## 3     State        Georgia        GA        Georgia (1783-09-03)         GA
+## 4     State  Massachusetts        MA  Massachusetts (1783-09-03)         MA
+## 5     State       Maryland        MD       Maryland (1783-09-03)         MD
+## 6     State North Carolina        NC North Carolina (1783-09-03)         NC
+##       state_name state_code       year states                       geometry
+## 1    Connecticut         09 1783-09-03   TRUE MULTIPOLYGON (((-73.5055 41...
+## 2       Delaware         10 1783-09-03   TRUE MULTIPOLYGON (((-75.07024 3...
+## 3        Georgia         13 1783-09-03   TRUE MULTIPOLYGON (((-81.50318 3...
+## 4  Massachusetts         25 1783-09-03   TRUE MULTIPOLYGON (((-70.81094 4...
+## 5       Maryland         24 1783-09-03   TRUE MULTIPOLYGON (((-76.01758 3...
+## 6 North Carolina         37 1783-09-03   TRUE MULTIPOLYGON (((-78.52302 3...</code></pre>
+<p>Before plotting our maps, there is one last important concept – projection. A projection is a method of mapping a 3D object (the Earth) onto a 2D sheet (a map). Regardless of the projection used, the image is unfortunately distorted in some manner. Usually, projections trade-off distortions between scale (or size) with shape. Projections may also create uneven distortions where some areas on the map have little distortion while others are heavily distorted. Many American maps use the <a href="https://en.wikipedia.org/wiki/Albers_projection">Albers projection</a>, as the distortions are minimal for the US area.</p>
+<figure>
+<p align="center">
+<img width="100%" height="100%" src="albers_projection.png">
+</p>
+<figcaption>
+Albers projection. All the circles are identical in 3D space, however, they distort when mapped to 2D space. Note that the circles in North America are minimally distorted.
+</figcaption>
+</figure>
+<div id="plotting-maps-with-spatial-dataframes-is-easy-with-ggplot" class="section level3">
+<h3>Plotting maps with spatial dataframes is easy with ggplot!</h3>
+<p>With <code>geom_sf()</code>, plotting maps in ggplot is identical to using regular ggplot.</p>
+<pre class="r"><code>library(ggplot2)
+
+albers_projection &lt;- paste0(
+  &quot;+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 &quot;,
+  &quot;+lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 &quot;,
+  &quot;+datum=NAD83 +units=m +no_defs&quot;
+)
+
+filter(maps, year==&quot;1784-09-03&quot;) %&gt;%
+  ggplot() +
+  geom_sf(aes(fill = name)) +
+  coord_sf(crs = albers_projection) +
+  theme_bw() +
+  labs(title = &quot;United States (1784)&quot;,
+       fill = &quot;States&quot;,
+       caption = &quot;Thirteen Colonies + Vermont Republic&quot;)</code></pre>
+<p><img src="/post/2020-08-10-us-expansion/index_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+</div>
+<div id="animating-the-map" class="section level3">
+<h3>Animating the map</h3>
+<p>Since we stored our data in a geospatial dataframe, we can filter on year to animate the plots. The filtering happens with <code>transition_manual(year)</code>, which creates a new frame for the animation for each different year. With <code>{frame}</code> you can reference the frame if you want to change text to reflect the year of the map. For example the function, <code>historical_events(frame)</code> adds a subtitle with some historical events for that year. <code>gganimate</code> lazily builds the animation i.e. does not create the animation until <code>animated_map</code> or <code>animate()</code> is called. Depending on the complexity of the shapefile and the strength of your computer, generating the animation may take a couple of minutes.</p>
+<pre class="r"><code>library(gganimate)
+library(ggspatial)
+
+historical_events &lt;- function(frame) {
+  year &lt;- 1783 + (frame - 1)
+  event &lt;- case_when(
+    year &lt;= 1803 ~ &quot;Organization of territory after Revolutionary War&quot;,
+    year &lt;= 1819 ~ &quot;Purchase of Louisiana and Spanish Cession&quot;,
+    year &lt;= 1845 ~ &quot;Northwest expansion (inc. Trail of Tears)&quot;,
+    year &lt;= 1861 ~ &quot;Mexican-American War and Southwest expansion&quot;,
+    year &lt;= 1865 ~ &quot;Civil War&quot;,
+    year &lt;= 1897 ~ &quot;Reconstruction and western statehood&quot;,
+    year &lt;= 1945 ~ &quot;Pacific and Caribbean expansion (not included)&quot;,
+    year &lt;= 2000 ~ &quot;Present day&quot;
+  )
+  return(event)
+}
+
+## Full size US
+usa &lt;- filter(maps, year == &quot;2000-9-3&quot;)
+usa$geometry &lt;- st_union(usa)
+usa &lt;- slice(usa, 1)
+usa[,-length(colnames(usa))] = NA
+usa[nrow(usa)+length(dates)-1,] &lt;- NA
+usa$year &lt;- dates
+usa$geometry &lt;- usa$geometry[1]
+usa$states &lt;- FALSE
+
+maps &lt;- bind_rows(maps, usa) 
+
+animated_map &lt;- ggplot(maps) +
+  geom_sf(aes(color = states, fill = terr_type)) +
+  coord_sf(crs = albers_projection) +
+  theme_bw() +
+  transition_manual(year) +
+  labs(
+    title = &quot;United States ({1783 + (frame - 1)})&quot;,
+    subtitle = &quot;{historical_events(frame)}&quot;,
+    caption = paste(
+      &quot;Continental US (48 states); Data from&quot;,
+      &quot;Newberry Library’s Atlas of Historical County Boundaries,&quot;
+    )
+  ) +
+  annotation_north_arrow(
+    location = &quot;bl&quot;, which_north = &quot;true&quot;,
+    pad_x = unit(0.75, &quot;in&quot;), pad_y = unit(0.5, &quot;in&quot;),
+    style = north_arrow_fancy_orienteering
+  ) +
+  annotation_scale(location = &quot;bl&quot;, width_hint = 0.5) +
+  scale_color_manual(values = c(&quot;grey&quot;, &quot;black&quot;)) +
+  guides(fill = guide_legend(title = &quot;Territory Type&quot;),
+         color = FALSE)
+
+gif &lt;- animate(animated_map, renderer = gifski_renderer(),
+               nframes = length(dates), duration = 75) 
+anim_save(&quot;us_expansion.gif&quot;, gif)</code></pre>
+<figure>
+<p align="center">
+<img width="100%" height="100%" src="us_expansion.gif">
+</p>
+<figcaption>
+</figcaption>
+</figure>
+<p><a href="https://github.com/badbayesian/personal_website/blob/master/content/post/2020-08-10-us-expansion/us_expansion.R">You can see the full script on my github here</a>.</p>
+</div>
