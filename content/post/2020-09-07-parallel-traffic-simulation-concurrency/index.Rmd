@@ -1,0 +1,19 @@
+---
+title: Parallel Traffic Simulation -- concurrency
+author: badbayesian
+date: '2020-09-07'
+slug: parallel-traffic-simulation-concurrency
+categories:
+  - go
+  - concurrent
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-09-01T13:35:56-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
