@@ -8,7 +8,7 @@ categories:
   - The Riddler
 tags: []
 math: true
-lastmod: '2020-09-01T13:35:56-05:00'
+lastmod: '2020-07-06T13:35:56-05:00'
 summary: "[538's the Riddler Classic](https://fivethirtyeight.com/features/can-you-stay-in-your-lane/), but this time with DC's potential statehood in mind."
 featured: no
 image:

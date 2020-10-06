@@ -3,6 +3,7 @@ title: Markov Streets (part 1)
 summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) about driving randomly throughout the city using two methods: math, and simulation study."
 author: badbayesian
 date: 2020-06-29
+lastmod: '2020-06-29T13:35:56-05:00'
 slug: riddler-express-markov-streets
 categories:
   - python
@@ -128,7 +129,7 @@ def main(experiment : Callable, rounds : int, trials : int) -&gt; dict:
     [experiments.count(i)/trials for i in experiments]))
     
 main(experiment, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;South&#39;: 0.488, &#39;North&#39;: 0.512}</code></pre>
+<pre><code>## {&#39;North&#39;: 0.503, &#39;South&#39;: 0.497}</code></pre>
 <p>The answer is pretty close to the answer from before, <span class="math inline">\(0.5\)</span>.</p>
 <div id="extra-credit-1" class="section level2">
 <h2>Extra credit</h2>
@@ -149,7 +150,7 @@ def experiment_extra(rounds : int) -&gt; str:
     return direction
 
 main(experiment_extra, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;East&#39;: 0.263, &#39;West&#39;: 0.258, &#39;North&#39;: 0.242, &#39;South&#39;: 0.237}</code></pre>
+<pre><code>## {&#39;South&#39;: 0.232, &#39;North&#39;: 0.265, &#39;West&#39;: 0.246, &#39;East&#39;: 0.257}</code></pre>
 <p>The answer is close to the mathematical answer, <span class="math inline">\(0.2500127\)</span>.</p>
 </div>
 </div>
