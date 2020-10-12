@@ -129,7 +129,7 @@ def main(experiment : Callable, rounds : int, trials : int) -&gt; dict:
     [experiments.count(i)/trials for i in experiments]))
     
 main(experiment, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;North&#39;: 0.503, &#39;South&#39;: 0.497}</code></pre>
+<pre><code>## {&#39;South&#39;: 0.498, &#39;North&#39;: 0.502}</code></pre>
 <p>The answer is pretty close to the answer from before, <span class="math inline">\(0.5\)</span>.</p>
 <div id="extra-credit-1" class="section level2">
 <h2>Extra credit</h2>
@@ -150,7 +150,7 @@ def experiment_extra(rounds : int) -&gt; str:
     return direction
 
 main(experiment_extra, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;South&#39;: 0.232, &#39;North&#39;: 0.265, &#39;West&#39;: 0.246, &#39;East&#39;: 0.257}</code></pre>
+<pre><code>## {&#39;East&#39;: 0.251, &#39;North&#39;: 0.244, &#39;South&#39;: 0.272, &#39;West&#39;: 0.233}</code></pre>
 <p>The answer is close to the mathematical answer, <span class="math inline">\(0.2500127\)</span>.</p>
 </div>
 </div>
