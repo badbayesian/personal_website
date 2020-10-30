@@ -15,6 +15,7 @@ image:
   caption: ''
   focal_point: ''
   preview_only: no
+disable_codefolding: true
 ---
 
 ```{css, echo=FALSE}

@@ -1,0 +1,216 @@
+---
+title: Great American Beer Festival
+author: badbayesian
+date: '2020-10-20'
+slug: great-american-beer-festival
+categories:
+  - R
+  - tidytuesday
+tags: []
+subtitle: 'check'
+summary: 'bla bla bla'
+lastmod: '2020-10-20T13:38:44-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+---
+
+<link href="index_files/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="index_files/anchor-sections/anchor-sections.js"></script>
+
+
+<p>Today I am exploring #TidyTuesday <a href="https://www.greatamericanbeerfestival.com/the-competition/winners/">Great American Beer Festival</a></p>
+<pre class="r"><code>library(tidyverse)
+library(ggplot2)
+library(fuzzyjoin)
+library(stringdist)
+library(tigris)
+
+beer_styles &lt;- read_csv(&quot;beer_styles.csv&quot;)
+
+state_info &lt;- fips_codes %&gt;%
+  group_by(state) %&gt;%
+  slice(1) %&gt;%
+  select(state, state_name)
+
+beer_awards &lt;- readr::read_csv(
+  paste0(&quot;https://raw.githubusercontent.com/rfordatascience/tidytuesday/&quot;,
+         &quot;master/data/2020/2020-10-20/beer_awards.csv&quot;)) %&gt;%
+  mutate(brewery = str_replace(brewery, &quot; Company&quot;, &quot;&quot;),
+         brewery = str_replace(brewery, &quot; Co.&quot;, &quot;&quot;))
+
+beers &lt;- read_csv(&quot;beers.csv&quot;) %&gt;%
+  select(-X1)
+breweries &lt;- read_csv(&quot;breweries.csv&quot;) %&gt;% 
+  mutate(name = str_replace(name, &quot; Company&quot;, &quot;&quot;),
+         name = str_replace(name, &quot; Co.&quot;, &quot;&quot;)) %&gt;%
+  inner_join(state_info, by=&quot;state&quot;)
+
+beer_joined &lt;- breweries %&gt;%
+  inner_join(beers, by=&quot;brewery_id&quot;) %&gt;%
+  rename(brewery_name = name.x,
+         beer_name = name.y) %&gt;%
+  full_join(beer_awards,
+            by=c(&quot;city&quot;=&quot;city&quot;,
+                 &quot;state&quot;=&quot;state&quot;,
+                 &quot;brewery_name&quot;=&quot;brewery&quot;,
+                 &quot;beer_name&quot;=&quot;beer_name&quot;)) %&gt;%
+  inner_join(state_info, by=&quot;state&quot;) %&gt;%
+  mutate(state_name = if_else(is.na(state_name.x),
+                              state_name.y, state_name.x)) %&gt;%
+  select(-state_name.x, -state_name.y) %&gt;%
+  rename(style2 = style)
+
+beer_awards_joined &lt;- beer_joined %&gt;%
+  mutate(category = case_when(
+    is.na(category) &amp; !is.na(style2) ~ style2,
+    is.na(category) &amp; is.na(style2) ~ beer_name,
+    TRUE ~ category)) %&gt;%
+  mutate(category = str_replace_all(category, &quot;-&quot;, &quot; &quot;),
+         category = str_replace_all(category, &quot;Ale, &quot;, &quot;&quot;),
+         category = str_replace_all(category, &quot;Lager, &quot;, &quot;&quot;)) %&gt;%
+  select(-id, -style2) %&gt;%
+  stringdist_left_join(beer_styles, by = c(&quot;category&quot;=&quot;category&quot;)) %&gt;%
+  mutate(category = if_else(is.na(category.x), category.y, category.x)) %&gt;%
+  select(-category.y, -category.x) %&gt;%
+  mutate(category = str_to_lower(category),
+         style = case_when(
+           str_detect(category, &quot;brown&quot;) ~ &quot;Brown Ales&quot;,
+           str_detect(category, &quot;dark lager|o*tober|dark pils&quot;) ~ &quot;Dark Lagers&quot;,
+           str_detect(category, &quot;dark ale&quot;) ~ &quot;Dark Ales&quot;,
+           str_detect(category, &quot;gose|wild|fruit|brett|sour&quot;) ~ &quot;Wild/Sour Beers&quot;,
+           str_detect(category, &quot;wheat|style weisse&quot;) ~ &quot;Wheat Beers&quot;,
+           str_detect(category, &quot;cream&quot;) ~ &quot;Hybrid Beers&quot;,
+           str_detect(category, &quot;spice|special|alcoholic&quot;) ~ &quot;Specialty Beers&quot;,
+           str_detect(category, &quot;pils|bitter|amber ale|light lager|zwickelbier|helles&quot;) ~ &quot;Pale Ales&quot;,
+           str_detect(category, &quot;pale ale&quot;) &amp; !str_detect(category, &quot;india&quot;) ~ &quot;Pale Ales&quot;,
+           str_detect(category, &quot;strong ale&quot;) ~ &quot;Strong Ales&quot;,
+           str_detect(category, &quot;india pale ale&quot;) ~ &quot;India Pale Ales&quot;,
+           TRUE ~ style)) %&gt;%
+  filter(!((category == &quot;American IPA&quot;) &amp; (style == &quot;American IPA&quot;))) %&gt;%
+  mutate(winner = !is.na(medal),
+         category = str_to_title(category))</code></pre>
+<pre class="r"><code>beer_awards_joined %&gt;%
+  filter(winner) %&gt;%
+  count(style) %&gt;%
+  ggplot() +
+  aes(y=style, x=n, fill=style) +
+  geom_col(position = &quot;dodge&quot;) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
+  labs(x = &quot;Count&quot;, y = &quot;Beer Styles&quot;, title = &quot;Counts of Beer Styles&quot;) +
+  theme(legend.position = &quot;none&quot;) #test</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-2-1.png" width="1152" /></p>
+<pre class="r"><code>library(tidylo)
+library(tidytext)
+
+log_odds &lt;- beer_awards_joined %&gt;%
+  filter(winner) %&gt;%
+  filter(fct_lump(category, 8) != &quot;Other&quot;,
+         fct_lump(state, 4) != &quot;Other&quot;) %&gt;%
+  count(state, category) %&gt;%
+  complete(state, category, fill = list(n=0)) %&gt;%
+  bind_log_odds(state, category, n) %&gt;%
+  inner_join(select(beer_awards_joined, style, category), by = &quot;category&quot;) %&gt;%
+  mutate(category = reorder_within(category, log_odds_weighted, state))
+
+log_odds %&gt;%
+  ggplot() +
+  aes(x=log_odds_weighted, y=category, fill=style) +
+  geom_col() +
+  scale_y_reordered() +
+  facet_wrap(~ state, nrow = 4, scale = &quot;free_y&quot;) +
+  labs(y = &quot;Category&quot;, x = &quot;Log odds weighted&quot;, fill = &quot;Beer style&quot;,
+       title = &quot;Over/Under representation of different beer categories.&quot;) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 20) +
+  scale_fill_manual(values = getPalette(8))</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-3-1.png" width="1152" /></p>
+<pre class="r"><code>beer_awards_joined %&gt;%
+  filter(winner) %&gt;%
+  filter(fct_lump(state, 4) != &quot;Other&quot;,
+         fct_lump(style, 8) != &quot;Other&quot;) %&gt;%
+  count(state, style) %&gt;%
+  complete(state, style, fill = list(n=0)) %&gt;%
+  bind_log_odds(state, style, n) %&gt;%
+  mutate(style = reorder_within(style, log_odds_weighted, state),
+         beer_style = sub(&quot;__.*&quot;, &quot;&quot;, style)) %&gt;%
+  ggplot() +
+  aes(x=log_odds_weighted, y=style, fill=beer_style) +
+  geom_col() +
+  scale_y_reordered() +
+  facet_wrap(~ state, nrow = 4, scale = &quot;free_y&quot;) +
+  labs(y = &quot;Beer styles&quot;, x = &quot;Log odds weighted&quot;, fill = &quot;Beer style&quot;) +
+  theme(text = element_text(size = 15)) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
+  scale_fill_manual(values = getPalette(8))</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" width="1152" /></p>
+<pre class="r"><code>beer_awards_joined %&gt;%
+  filter(winner) %&gt;%
+  filter(fct_lump(state, 4) != &quot;Other&quot;,
+         fct_lump(style, 9) != &quot;Other&quot;) %&gt;%
+  count(state, style) %&gt;%
+  complete(state, style, fill = list(n=0)) %&gt;%
+  bind_log_odds(state, style, n) %&gt;%
+  mutate(style = reorder_within(style, log_odds_weighted, state),
+         beer_style = sub(&quot;__.*&quot;, &quot;&quot;, style)) %&gt;%
+  ggplot() +
+  aes(x=log_odds_weighted, y=style, fill=beer_style) +
+  geom_col() +
+  scale_y_reordered() +
+  facet_wrap(~ state, nrow = 8, scale = &quot;free_y&quot;) +
+  labs(y = &quot;Beer styles&quot;, x = &quot;Log odds weighted&quot;, fill = &quot;Beer style&quot;) +
+  theme(text = element_text(size = 15)) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
+  scale_fill_manual(values = getPalette(9))</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="1152" /></p>
+<pre class="r"><code>library(broom)
+by_year_style &lt;- beer_awards_joined %&gt;%
+  filter(winner) %&gt;%
+  add_count(year, name = &quot;year_total&quot;) %&gt;%
+  count(style, year, year_total, sort = TRUE) %&gt;%
+  mutate(pct_year = n / year_total)
+
+over_under &lt;- by_year_style %&gt;%
+  group_by(style) %&gt;%
+  summarize(model = list(glm(cbind(n, year_total - n) ~ year,
+                             family = &quot;binomial&quot;))) %&gt;%
+  mutate(tidied = map(model, tidy, conf.int = TRUE)) %&gt;%
+  unnest(tidied) %&gt;%
+  filter(term == &quot;year&quot;) %&gt;%
+  mutate(p.value = format.pval(round(p.value, 2)),
+         style = fct_reorder(style, estimate))</code></pre>
+<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
+<pre class="r"><code>over_under %&gt;%
+  ggplot() +
+  aes(x=estimate, y=style) +
+  geom_point() +
+  geom_vline(xintercept = 0, lty = 2) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = .1) +
+  theme_bw() +
+  labs(x = &quot;Estimated slope&quot;,
+       title = &quot;Which beers styles are increasingly winning\n more over time throughout the US?&quot;,
+       y = &quot;&quot;) +
+  theme(text = element_text(size = 15)) +
+  theme_ipsum_ps()</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="1152" /></p>
+<pre class="r"><code>by_year_state_style &lt;- beer_awards_joined %&gt;%
+  add_count(year, name = &quot;year_total&quot;) %&gt;%
+  mutate(state = fct_lump(state, 4)) %&gt;%
+  count(style, state, year, year_total, sort = TRUE) %&gt;%
+  mutate(pct_year = n / year_total)
+
+by_year_state_style %&gt;%
+  mutate(style = fct_lump(style, 8)) %&gt;%
+  filter(!state %in% c(NA, &quot;Other&quot;)) %&gt;%
+  ggplot() +
+  aes(x=year, y=pct_year, color=style) +
+  geom_line() +
+  expand_limits(y = 0) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_wrap(~ state, ncol = 2) +
+  theme_bw() +
+  labs(y = &quot;% per year&quot;, x = &quot;Year&quot;, color = &quot;Beer styles&quot;) +
+  theme(text = element_text(size = 15)) </code></pre>
+<pre><code>## Warning: Removed 14 row(s) containing missing values (geom_path).</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-7-1.png" width="1152" /></p>

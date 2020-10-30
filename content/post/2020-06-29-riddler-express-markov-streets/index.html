@@ -1,5 +1,5 @@
 ---
-title: Markov Streets (part 1)
+title: Markov Streets
 summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) about driving randomly throughout the city using two methods: math, and simulation study."
 author: badbayesian
 date: 2020-06-29
@@ -15,9 +15,11 @@ image:
   caption: ""
   focal_point: ""
   preview_only: true
-# bibliography: ref.bib
+disable_codefolding: true
 ---
 
+<link href="index_files/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="index_files/anchor-sections/anchor-sections.js"></script>
 
 
 <p>This week, I will solve <a href="https://fivethirtyeight.com/features/can-you-connect-the-dots/">538’s riddler express</a> using two methods: math, and simulation study.</p>
@@ -129,7 +131,7 @@ def main(experiment : Callable, rounds : int, trials : int) -&gt; dict:
     [experiments.count(i)/trials for i in experiments]))
     
 main(experiment, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;South&#39;: 0.498, &#39;North&#39;: 0.502}</code></pre>
+<pre><code>## {&#39;North&#39;: 0.479, &#39;South&#39;: 0.521}</code></pre>
 <p>The answer is pretty close to the answer from before, <span class="math inline">\(0.5\)</span>.</p>
 <div id="extra-credit-1" class="section level2">
 <h2>Extra credit</h2>
@@ -150,7 +152,7 @@ def experiment_extra(rounds : int) -&gt; str:
     return direction
 
 main(experiment_extra, rounds=10, trials=1000)</code></pre>
-<pre><code>## {&#39;East&#39;: 0.251, &#39;North&#39;: 0.244, &#39;South&#39;: 0.272, &#39;West&#39;: 0.233}</code></pre>
+<pre><code>## {&#39;North&#39;: 0.228, &#39;East&#39;: 0.263, &#39;South&#39;: 0.228, &#39;West&#39;: 0.281}</code></pre>
 <p>The answer is close to the mathematical answer, <span class="math inline">\(0.2500127\)</span>.</p>
 </div>
 </div>

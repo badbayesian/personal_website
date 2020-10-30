@@ -1,5 +1,5 @@
 ---
-title: Markov Streets (part 1)
+title: Markov Streets
 summary: "This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) about driving randomly throughout the city using two methods: math, and simulation study."
 author: badbayesian
 date: 2020-06-29
@@ -15,7 +15,7 @@ image:
   caption: ""
   focal_point: ""
   preview_only: true
-# bibliography: ref.bib
+disable_codefolding: true
 ---
 
 This week, I will solve [538's riddler express](https://fivethirtyeight.com/features/can-you-connect-the-dots/) using two methods: math, and simulation study.
