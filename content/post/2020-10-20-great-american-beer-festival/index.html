@@ -192,10 +192,10 @@ over_under &lt;- by_year_style %&gt;%
   geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = .1) +
   theme_bw() +
   labs(x = &quot;Estimated slope&quot;,
-       title = &quot;Which beers styles are increasingly winning\n more over time throughout the US?&quot;,
+       title = &quot;Which beers styles are increasingly winning more over time throughout the US?&quot;,
        y = &quot;&quot;) +
   theme(text = element_text(size = 15)) +
-  theme_ipsum_ps()</code></pre>
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="1152" /></p>
 <pre class="r"><code>by_year_state_style &lt;- beer_awards_joined %&gt;%
   add_count(year, name = &quot;year_total&quot;) %&gt;%

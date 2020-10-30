@@ -217,7 +217,7 @@ over_under %>%
   geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = .1) +
   theme_bw() +
   labs(x = "Estimated slope",
-       title = "Which beers styles are increasingly winning\n more over time throughout the US?",
+       title = "Which beers styles are increasingly winning more over time throughout the US?",
        y = "") +
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
