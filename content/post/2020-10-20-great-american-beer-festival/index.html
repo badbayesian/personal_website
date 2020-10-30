@@ -93,6 +93,8 @@ beer_awards_joined &lt;- beer_joined %&gt;%
   mutate(winner = !is.na(medal),
          category = str_to_title(category))</code></pre>
 <pre class="r"><code>beer_awards_joined %&gt;%
+  mutate(style = if_else(is.na(style), &quot;_NA&quot;, style),
+         style = fct_reorder(style, desc(style))) %&gt;%
   filter(winner) %&gt;%
   count(style) %&gt;%
   ggplot() +
@@ -100,7 +102,8 @@ beer_awards_joined &lt;- beer_joined %&gt;%
   geom_col(position = &quot;dodge&quot;) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
   labs(x = &quot;Count&quot;, y = &quot;Beer Styles&quot;, title = &quot;Counts of Beer Styles&quot;) +
-  theme(legend.position = &quot;none&quot;) #test</code></pre>
+  theme(legend.position = &quot;none&quot;) +
+  scale_fill_manual(values = getPalette(15))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-2-1.png" width="1152" /></p>
 <pre class="r"><code>library(tidylo)
 library(tidytext)

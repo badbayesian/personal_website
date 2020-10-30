@@ -109,6 +109,8 @@ beer_awards_joined <- beer_joined %>%
 
 ```{r}
 beer_awards_joined %>%
+  mutate(style = if_else(is.na(style), "_NA", style),
+         style = fct_reorder(style, desc(style))) %>%
   filter(winner) %>%
   count(style) %>%
   ggplot() +
@@ -116,7 +118,8 @@ beer_awards_joined %>%
   geom_col(position = "dodge") +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
   labs(x = "Count", y = "Beer Styles", title = "Counts of Beer Styles") +
-  theme(legend.position = "none") #test
+  theme(legend.position = "none") +
+  scale_fill_manual(values = getPalette(15))
 ```
 
 ```{r}
@@ -217,7 +220,7 @@ over_under %>%
        title = "Which beers styles are increasingly winning\n more over time throughout the US?",
        y = "") +
   theme(text = element_text(size = 15)) +
-  theme_ipsum_ps()
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```
 
 ```{r}
