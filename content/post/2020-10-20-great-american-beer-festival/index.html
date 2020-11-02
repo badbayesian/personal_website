@@ -1,14 +1,13 @@
 ---
-title: Great American Beer Festival
+title: The Great American Beer Festival
 author: badbayesian
 date: '2020-10-20'
 slug: great-american-beer-festival
 categories:
   - R
   - tidytuesday
-tags: []
-subtitle: 'check'
-summary: 'bla bla bla'
+subtitle: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) and what what beer styles are becoming more popular."
+summary: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) and what what beer styles are becoming more popular."
 lastmod: '2020-10-20T13:38:44-05:00'
 featured: no
 image:
@@ -21,7 +20,9 @@ image:
 <script src="index_files/anchor-sections/anchor-sections.js"></script>
 
 
-<p>Today I am exploring #TidyTuesday <a href="https://www.greatamericanbeerfestival.com/the-competition/winners/">Great American Beer Festival</a></p>
+<p>This week, we explore which beer styles and categories are are over/under represented in different states and over time.</p>
+<div id="exploring-the-data" class="section level2">
+<h2>Exploring the data</h2>
 <pre class="r"><code>library(tidyverse)
 library(ggplot2)
 library(fuzzyjoin)
@@ -73,9 +74,14 @@ beer_awards_joined &lt;- beer_joined %&gt;%
          category = str_replace_all(category, &quot;Lager, &quot;, &quot;&quot;)) %&gt;%
   select(-id, -style2) %&gt;%
   stringdist_left_join(beer_styles, by = c(&quot;category&quot;=&quot;category&quot;)) %&gt;%
-  mutate(category = if_else(is.na(category.x), category.y, category.x)) %&gt;%
+  mutate(category = str_to_lower(if_else(is.na(category.x), category.y, category.x))) %&gt;%
   select(-category.y, -category.x) %&gt;%
-  mutate(category = str_to_lower(category),
+  mutate(category = case_when(
+           str_detect(category, &quot;dry stout&quot;) &amp;
+             !str_detect(category, &quot;irish&quot;) ~ &quot;dry stout&quot;,
+           str_detect(category, &quot;foreign style|export&quot;) &amp;
+             style == &quot;Stouts&quot; ~ &quot;foreign style stout&quot;,
+           TRUE ~ category),
          style = case_when(
            str_detect(category, &quot;brown&quot;) ~ &quot;Brown Ales&quot;,
            str_detect(category, &quot;dark lager|o*tober|dark pils&quot;) ~ &quot;Dark Lagers&quot;,
@@ -91,9 +97,13 @@ beer_awards_joined &lt;- beer_joined %&gt;%
            TRUE ~ style)) %&gt;%
   filter(!((category == &quot;American IPA&quot;) &amp; (style == &quot;American IPA&quot;))) %&gt;%
   mutate(winner = !is.na(medal),
-         category = str_to_title(category))</code></pre>
+         category = str_to_title(category)) %&gt;%
+  filter(winner) %&gt;%
+  distinct()</code></pre>
+<p>There are 448 different categories with on average 11.1 beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially for time series or geospatial models where we would additionally cut on year and state. This fact will come inhandly later in the analysis.</p>
+<p>We can aggregate <code>beer category</code> to <code>beer style</code> as defined by <a href="https://www.beeradvocate.com/beer/styles/">Beer Advocate</a>. This larger set of beers has only 15 different buckets and has on average 343.43 beers in each style.</p>
 <pre class="r"><code>beer_awards_joined %&gt;%
-  mutate(style = if_else(is.na(style), &quot;_NA&quot;, style),
+  mutate(style = if_else(is.na(style), &quot; NA&quot;, style),
          style = fct_reorder(style, desc(style))) %&gt;%
   filter(winner) %&gt;%
   count(style) %&gt;%
@@ -101,22 +111,26 @@ beer_awards_joined &lt;- beer_joined %&gt;%
   aes(y=style, x=n, fill=style) +
   geom_col(position = &quot;dodge&quot;) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
-  labs(x = &quot;Count&quot;, y = &quot;Beer Styles&quot;, title = &quot;Counts of Beer Styles&quot;) +
+  labs(x = &quot;Count&quot;, y = &quot;Beer Styles&quot;, title = &quot;Counts of Beer Styles for medal winners&quot;) +
   theme(legend.position = &quot;none&quot;) +
   scale_fill_manual(values = getPalette(15))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-2-1.png" width="1152" /></p>
+</div>
+<div id="modeling-questions" class="section level2">
+<h2>Modeling questions</h2>
+<p>One would imagine that different states may specialize in different categories or styles of beer. We can model this using <code>Log Odds</code> which creates a statistic of the strength of the relationship between two events. In our example, we might ask what beer categories are over/under represented in a given state. This may indicate a beverage specialization and perhaps a consumer preference for that state.</p>
 <pre class="r"><code>library(tidylo)
 library(tidytext)
 
 log_odds &lt;- beer_awards_joined %&gt;%
-  filter(winner) %&gt;%
   filter(fct_lump(category, 8) != &quot;Other&quot;,
          fct_lump(state, 4) != &quot;Other&quot;) %&gt;%
-  count(state, category) %&gt;%
+  count(state, category, style) %&gt;%
   complete(state, category, fill = list(n=0)) %&gt;%
-  bind_log_odds(state, category, n) %&gt;%
-  inner_join(select(beer_awards_joined, style, category), by = &quot;category&quot;) %&gt;%
-  mutate(category = reorder_within(category, log_odds_weighted, state))
+  bind_log_odds(state, category, n, uninformative = TRUE, unweighted = TRUE) %&gt;%
+  mutate(category = reorder_within(category, log_odds_weighted, state),
+         style = if_else(is.na(style), &quot;Bocks&quot;, style))
+
 
 log_odds %&gt;%
   ggplot() +
@@ -124,13 +138,14 @@ log_odds %&gt;%
   geom_col() +
   scale_y_reordered() +
   facet_wrap(~ state, nrow = 4, scale = &quot;free_y&quot;) +
-  labs(y = &quot;Category&quot;, x = &quot;Log odds weighted&quot;, fill = &quot;Beer style&quot;,
-       title = &quot;Over/Under representation of different beer categories.&quot;) +
+  labs(y = &quot;Beer Category&quot;, x = &quot;Weighted Log Odds&quot;, fill = &quot;Beer style&quot;,
+       title = &quot;Over/Under representation of different beer categories\n per US State&quot;) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 20) +
   scale_fill_manual(values = getPalette(8))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-3-1.png" width="1152" /></p>
+<p>Our analysis suggest that <code>beer categories</code>: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.</p>
+<p>We can also specifically look at <code>beer styles</code> to to check the robustness of the claim.</p>
 <pre class="r"><code>beer_awards_joined %&gt;%
-  filter(winner) %&gt;%
   filter(fct_lump(state, 4) != &quot;Other&quot;,
          fct_lump(style, 8) != &quot;Other&quot;) %&gt;%
   count(state, style) %&gt;%
@@ -143,41 +158,42 @@ log_odds %&gt;%
   geom_col() +
   scale_y_reordered() +
   facet_wrap(~ state, nrow = 4, scale = &quot;free_y&quot;) +
-  labs(y = &quot;Beer styles&quot;, x = &quot;Log odds weighted&quot;, fill = &quot;Beer style&quot;) +
+  labs(y = &quot;Beer style&quot;, x = &quot;Weighted Log Odds&quot;, fill = &quot;Beer style&quot;,
+       title = &quot;Over/Under representation of different beer styles\n per US State.&quot;) +
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
   scale_fill_manual(values = getPalette(8))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-4-1.png" width="1152" /></p>
-<pre class="r"><code>beer_awards_joined %&gt;%
-  filter(winner) %&gt;%
-  filter(fct_lump(state, 4) != &quot;Other&quot;,
-         fct_lump(style, 9) != &quot;Other&quot;) %&gt;%
+<p>Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as while California produces a lot of award winning Irish Dry and Imperial Stouts, Oregon still produces a wide range of award winning Stouts. However, other aspects of the specialization claim were understated as the weighted log odds <code>Dark Largers</code> are very positive in Colorado and Texas and are very negative in California and Oregon. This is without any over/under representation in any specific <code>beer category</code>.</p>
+<p>We can also view this plot throughout the US as a proxy for specialization zones in the US.</p>
+<pre class="r"><code>library(geofacet)
+beer_awards_joined %&gt;%
+  filter(fct_lump(style, 8) != &quot;Other&quot;) %&gt;%
   count(state, style) %&gt;%
   complete(state, style, fill = list(n=0)) %&gt;%
   bind_log_odds(state, style, n) %&gt;%
   mutate(style = reorder_within(style, log_odds_weighted, state),
          beer_style = sub(&quot;__.*&quot;, &quot;&quot;, style)) %&gt;%
   ggplot() +
-  aes(x=log_odds_weighted, y=style, fill=beer_style) +
+  aes(x=log_odds_weighted, y=reorder(beer_style, desc(beer_style)), fill=beer_style) +
   geom_col() +
+  facet_geo(~ state, grid = &quot;us_state_grid2&quot;) +
   scale_y_reordered() +
-  facet_wrap(~ state, nrow = 8, scale = &quot;free_y&quot;) +
-  labs(y = &quot;Beer styles&quot;, x = &quot;Log odds weighted&quot;, fill = &quot;Beer style&quot;) +
-  theme(text = element_text(size = 15)) +
-  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
-  scale_fill_manual(values = getPalette(9))</code></pre>
+  theme_bw() +
+  scale_fill_manual(values = getPalette(8)) +
+  labs(x=&quot;Weighted Log-Odds&quot;, y=&quot;Beer Styles&quot;, fill=&quot;Beer Styles&quot;,
+       title = &quot;Weighted Log-Odds of different Beer Styles throughout the US&quot;)</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="1152" /></p>
+<p>Lastly, we can regress number of specific beer style and year to see if any beer styles are becoming more popular.</p>
 <pre class="r"><code>library(broom)
 by_year_style &lt;- beer_awards_joined %&gt;%
-  filter(winner) %&gt;%
   add_count(year, name = &quot;year_total&quot;) %&gt;%
   count(style, year, year_total, sort = TRUE) %&gt;%
   mutate(pct_year = n / year_total)
 
 over_under &lt;- by_year_style %&gt;%
   group_by(style) %&gt;%
-  summarize(model = list(glm(cbind(n, year_total - n) ~ year,
-                             family = &quot;binomial&quot;))) %&gt;%
+  summarize(model = list(glm(cbind(n, year_total - n) ~ year, family = &quot;binomial&quot;))) %&gt;%
   mutate(tidied = map(model, tidy, conf.int = TRUE)) %&gt;%
   unnest(tidied) %&gt;%
   filter(term == &quot;year&quot;) %&gt;%
@@ -187,33 +203,14 @@ over_under &lt;- by_year_style %&gt;%
 <pre class="r"><code>over_under %&gt;%
   ggplot() +
   aes(x=estimate, y=style) +
-  geom_point() +
+  geom_point(size=3) +
   geom_vline(xintercept = 0, lty = 2) +
-  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = .1) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = .1, size=1) +
   theme_bw() +
   labs(x = &quot;Estimated slope&quot;,
-       title = &quot;Which beers styles are increasingly winning more over time throughout the US?&quot;,
+       title = &quot;Which beers styles are increasingly winning more\n over time throughout the US?&quot;,
        y = &quot;&quot;) +
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="1152" /></p>
-<pre class="r"><code>by_year_state_style &lt;- beer_awards_joined %&gt;%
-  add_count(year, name = &quot;year_total&quot;) %&gt;%
-  mutate(state = fct_lump(state, 4)) %&gt;%
-  count(style, state, year, year_total, sort = TRUE) %&gt;%
-  mutate(pct_year = n / year_total)
-
-by_year_state_style %&gt;%
-  mutate(style = fct_lump(style, 8)) %&gt;%
-  filter(!state %in% c(NA, &quot;Other&quot;)) %&gt;%
-  ggplot() +
-  aes(x=year, y=pct_year, color=style) +
-  geom_line() +
-  expand_limits(y = 0) +
-  scale_y_continuous(labels = scales::percent) +
-  facet_wrap(~ state, ncol = 2) +
-  theme_bw() +
-  labs(y = &quot;% per year&quot;, x = &quot;Year&quot;, color = &quot;Beer styles&quot;) +
-  theme(text = element_text(size = 15)) </code></pre>
-<pre><code>## Warning: Removed 14 row(s) containing missing values (geom_path).</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-7-1.png" width="1152" /></p>
+</div>

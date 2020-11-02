@@ -214,7 +214,7 @@ African Americans have a long history in DC with many struggles that continue to
 <div>
 <img src="blm.png" />
 <figcaption>
-Black lives matter; Defund the police
+Black lives matter
 </figcaption>
 </div>
 
