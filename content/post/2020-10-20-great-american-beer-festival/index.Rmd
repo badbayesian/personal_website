@@ -1,5 +1,5 @@
 ---
-title: The Great American Beer Festival
+title: Great American Beer Festival
 author: badbayesian
 date: '2020-10-20'
 slug: great-american-beer-festival
@@ -82,24 +82,24 @@ beer_awards_joined <- beer_joined %>%
   mutate(category = str_to_lower(if_else(is.na(category.x), category.y, category.x))) %>%
   select(-category.y, -category.x) %>%
   mutate(category = case_when(
-           str_detect(category, "dry stout") &
-             !str_detect(category, "irish") ~ "dry stout",
-           str_detect(category, "foreign style|export") &
-             style == "Stouts" ~ "foreign style stout",
-           TRUE ~ category),
-         style = case_when(
-           str_detect(category, "brown") ~ "Brown Ales",
-           str_detect(category, "dark lager|o*tober|dark pils") ~ "Dark Lagers",
-           str_detect(category, "dark ale") ~ "Dark Ales",
-           str_detect(category, "gose|wild|fruit|brett|sour") ~ "Wild/Sour Beers",
-           str_detect(category, "wheat|style weisse") ~ "Wheat Beers",
-           str_detect(category, "cream") ~ "Hybrid Beers",
-           str_detect(category, "spice|special|alcoholic") ~ "Specialty Beers",
-           str_detect(category, "pils|bitter|amber ale|light lager|zwickelbier|helles") ~ "Pale Ales",
-           str_detect(category, "pale ale") & !str_detect(category, "india") ~ "Pale Ales",
-           str_detect(category, "strong ale") ~ "Strong Ales",
-           str_detect(category, "india pale ale") ~ "India Pale Ales",
-           TRUE ~ style)) %>%
+    str_detect(category, "dry stout") &
+      !str_detect(category, "irish") ~ "dry stout",
+    str_detect(category, "foreign style|export") &
+      style == "Stouts" ~ "foreign style stout",
+    TRUE ~ category),
+    style = case_when(
+      str_detect(category, "brown") ~ "Brown Ales",
+      str_detect(category, "dark lager|o*tober|dark pils") ~ "Dark Lagers",
+      str_detect(category, "dark ale") ~ "Dark Ales",
+      str_detect(category, "gose|wild|fruit|brett|sour") ~ "Wild/Sour Beers",
+      str_detect(category, "wheat|style weisse") ~ "Wheat Beers",
+      str_detect(category, "cream") ~ "Hybrid Beers",
+      str_detect(category, "spice|special|alcoholic") ~ "Specialty Beers",
+      str_detect(category, "pils|bitter|amber ale|light lager|zwickelbier|helles") ~ "Pale Ales",
+      str_detect(category, "pale ale") & !str_detect(category, "india") ~ "Pale Ales",
+      str_detect(category, "strong ale") ~ "Strong Ales",
+      str_detect(category, "india pale ale") ~ "India Pale Ales",
+      TRUE ~ style)) %>%
   filter(!((category == "American IPA") & (style == "American IPA"))) %>%
   mutate(winner = !is.na(medal),
          category = str_to_title(category)) %>%
@@ -109,16 +109,38 @@ beer_awards_joined <- beer_joined %>%
 There are `r length(unique(beer_awards_joined$category))` different categories with on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially time series or geospatial models. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each style. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
 
 ```{r}
-beer_awards_joined %>%
+beer_style_counts <- beer_awards_joined %>%
   mutate(style = if_else(is.na(style), " NA", style),
          style = fct_reorder(style, desc(style))) %>%
-  filter(winner) %>%
-  count(style) %>%
+  count(style)
+
+beer_style_counts %>% 
   ggplot() +
   aes(y=style, x=n, fill=style) +
   geom_col(position = "dodge") +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
-  labs(x = "Count", y = "Beer Styles", title = "Counts of Beer Styles for medal winners") +
+  labs(x = "Count", y = "Beer Styles", title = "Number of Beer Styles") +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = getPalette(15))
+```
+
+```{r, message=FALSE}
+beer_awards_joined %>%
+  mutate(style = if_else(is.na(style), " NA", style)) %>%
+  count(style, category) %>%
+  group_by(style) %>%
+  summarise(category_numbers = n()) %>%
+  inner_join(beer_style_counts, by="style") %>%
+  mutate(style = fct_reorder(style, desc(style))) %>%
+  ggplot() +
+  aes(x=category_numbers, y=style, fill=style) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = paste0("n=", n)),
+            size=3,
+            nudge_x = -2,
+            nudge_y = -0.25) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
+  labs(x = "Count", y = "Beer Styles", title = "Number of Beer Categories per Beer Style") +
   theme(legend.position = "none") +
   scale_fill_manual(values = getPalette(15))
 ```
@@ -153,7 +175,7 @@ log_odds %>%
   scale_fill_manual(values = getPalette(8))
 ```
 
-Our analysis suggest that `beer categories`: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.
+The analysis suggest that `beer categories`: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.
 
 We can also specifically look at `beer styles` to to check the robustness of the claim.
 
@@ -178,7 +200,7 @@ beer_awards_joined %>%
   scale_fill_manual(values = getPalette(8))
 ```
 
-Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as while California produces a lot of award winning Irish Dry and Imperial Stouts, Oregon still produces a wide range of award winning Stouts. However, other aspects of the specialization claim were understated as the weighted log odds `Dark Largers` are very positive in Colorado and Texas and are very negative in California and Oregon. This is without any over/under representation in any specific `beer category`.
+Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as the `Robust Porter` is over represented in California, however, `Porters` in general are not. Various specific categories of `Wheat Beers` are only vaguely over/under represented , the beer style of `Wheat Beers` are over represented in Colorado and under presented in California. Alternatively, in Texas, the `German Style Wheat Ale` is very over represented however, `Wheat Beers` in general are not. `Dark Largers` beer style is very positive in Colorado and Texas and are very negative in California and Oregon. However, no specific category of dark lagers are particularly over/under representation.
 
 We can also view this plot throughout the US as a proxy for specialization zones in the US.
 
@@ -202,9 +224,12 @@ beer_awards_joined %>%
        title = "Weighted Log-Odds of different Beer Styles throughout the US")
 ```
 
-Lastly, we can regress number of specific beer style and year to see if any beer styles are becoming more popular. 
 
-```{r, warnings=FALSE}
+
+
+Lastly, we can regress number of specific beer style with year to see if any beer styles are becoming more popular over time.
+
+```{r, warnings=FALSE, message=FALSE}
 library(broom)
 by_year_style <- beer_awards_joined %>%
   add_count(year, name = "year_total") %>%

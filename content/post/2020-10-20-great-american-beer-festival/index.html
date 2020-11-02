@@ -1,13 +1,13 @@
 ---
-title: The Great American Beer Festival
+title: Great American Beer Festival
 author: badbayesian
 date: '2020-10-20'
 slug: great-american-beer-festival
 categories:
   - R
   - tidytuesday
-subtitle: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
-summary: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
+subtitle: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
+summary: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
 lastmod: '2020-10-20T13:38:44-05:00'
 featured: no
 ---
@@ -73,43 +73,63 @@ beer_awards_joined &lt;- beer_joined %&gt;%
   mutate(category = str_to_lower(if_else(is.na(category.x), category.y, category.x))) %&gt;%
   select(-category.y, -category.x) %&gt;%
   mutate(category = case_when(
-           str_detect(category, &quot;dry stout&quot;) &amp;
-             !str_detect(category, &quot;irish&quot;) ~ &quot;dry stout&quot;,
-           str_detect(category, &quot;foreign style|export&quot;) &amp;
-             style == &quot;Stouts&quot; ~ &quot;foreign style stout&quot;,
-           TRUE ~ category),
-         style = case_when(
-           str_detect(category, &quot;brown&quot;) ~ &quot;Brown Ales&quot;,
-           str_detect(category, &quot;dark lager|o*tober|dark pils&quot;) ~ &quot;Dark Lagers&quot;,
-           str_detect(category, &quot;dark ale&quot;) ~ &quot;Dark Ales&quot;,
-           str_detect(category, &quot;gose|wild|fruit|brett|sour&quot;) ~ &quot;Wild/Sour Beers&quot;,
-           str_detect(category, &quot;wheat|style weisse&quot;) ~ &quot;Wheat Beers&quot;,
-           str_detect(category, &quot;cream&quot;) ~ &quot;Hybrid Beers&quot;,
-           str_detect(category, &quot;spice|special|alcoholic&quot;) ~ &quot;Specialty Beers&quot;,
-           str_detect(category, &quot;pils|bitter|amber ale|light lager|zwickelbier|helles&quot;) ~ &quot;Pale Ales&quot;,
-           str_detect(category, &quot;pale ale&quot;) &amp; !str_detect(category, &quot;india&quot;) ~ &quot;Pale Ales&quot;,
-           str_detect(category, &quot;strong ale&quot;) ~ &quot;Strong Ales&quot;,
-           str_detect(category, &quot;india pale ale&quot;) ~ &quot;India Pale Ales&quot;,
-           TRUE ~ style)) %&gt;%
+    str_detect(category, &quot;dry stout&quot;) &amp;
+      !str_detect(category, &quot;irish&quot;) ~ &quot;dry stout&quot;,
+    str_detect(category, &quot;foreign style|export&quot;) &amp;
+      style == &quot;Stouts&quot; ~ &quot;foreign style stout&quot;,
+    TRUE ~ category),
+    style = case_when(
+      str_detect(category, &quot;brown&quot;) ~ &quot;Brown Ales&quot;,
+      str_detect(category, &quot;dark lager|o*tober|dark pils&quot;) ~ &quot;Dark Lagers&quot;,
+      str_detect(category, &quot;dark ale&quot;) ~ &quot;Dark Ales&quot;,
+      str_detect(category, &quot;gose|wild|fruit|brett|sour&quot;) ~ &quot;Wild/Sour Beers&quot;,
+      str_detect(category, &quot;wheat|style weisse&quot;) ~ &quot;Wheat Beers&quot;,
+      str_detect(category, &quot;cream&quot;) ~ &quot;Hybrid Beers&quot;,
+      str_detect(category, &quot;spice|special|alcoholic&quot;) ~ &quot;Specialty Beers&quot;,
+      str_detect(category, &quot;pils|bitter|amber ale|light lager|zwickelbier|helles&quot;) ~ &quot;Pale Ales&quot;,
+      str_detect(category, &quot;pale ale&quot;) &amp; !str_detect(category, &quot;india&quot;) ~ &quot;Pale Ales&quot;,
+      str_detect(category, &quot;strong ale&quot;) ~ &quot;Strong Ales&quot;,
+      str_detect(category, &quot;india pale ale&quot;) ~ &quot;India Pale Ales&quot;,
+      TRUE ~ style)) %&gt;%
   filter(!((category == &quot;American IPA&quot;) &amp; (style == &quot;American IPA&quot;))) %&gt;%
   mutate(winner = !is.na(medal),
          category = str_to_title(category)) %&gt;%
   filter(winner) %&gt;%
   distinct()</code></pre>
 <p>There are 448 different categories with on average 11.1 beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially time series or geospatial models. As such, we can aggregate <code>beer category</code> to <code>beer style</code>, as defined by <a href="https://www.beeradvocate.com/beer/styles/">Beer Advocate</a>, to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only 15 different buckets with on average 343.43 beers in each style. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.</p>
-<pre class="r"><code>beer_awards_joined %&gt;%
+<pre class="r"><code>beer_style_counts &lt;- beer_awards_joined %&gt;%
   mutate(style = if_else(is.na(style), &quot; NA&quot;, style),
          style = fct_reorder(style, desc(style))) %&gt;%
-  filter(winner) %&gt;%
-  count(style) %&gt;%
+  count(style)
+
+beer_style_counts %&gt;% 
   ggplot() +
   aes(y=style, x=n, fill=style) +
   geom_col(position = &quot;dodge&quot;) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
-  labs(x = &quot;Count&quot;, y = &quot;Beer Styles&quot;, title = &quot;Counts of Beer Styles for medal winners&quot;) +
+  labs(x = &quot;Count&quot;, y = &quot;Beer Styles&quot;, title = &quot;Number of Beer Styles&quot;) +
   theme(legend.position = &quot;none&quot;) +
   scale_fill_manual(values = getPalette(15))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-2-1.png" width="1152" /></p>
+<pre class="r"><code>beer_awards_joined %&gt;%
+  mutate(style = if_else(is.na(style), &quot; NA&quot;, style)) %&gt;%
+  count(style, category) %&gt;%
+  group_by(style) %&gt;%
+  summarise(category_numbers = n()) %&gt;%
+  inner_join(beer_style_counts, by=&quot;style&quot;) %&gt;%
+  mutate(style = fct_reorder(style, desc(style))) %&gt;%
+  ggplot() +
+  aes(x=category_numbers, y=style, fill=style) +
+  geom_col(position = &quot;dodge&quot;) +
+  geom_text(aes(label = paste0(&quot;n=&quot;, n)),
+            size=3,
+            nudge_x = -2,
+            nudge_y = -0.25) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
+  labs(x = &quot;Count&quot;, y = &quot;Beer Styles&quot;, title = &quot;Number of Beer Categories per Beer Style&quot;) +
+  theme(legend.position = &quot;none&quot;) +
+  scale_fill_manual(values = getPalette(15))</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-3-1.png" width="1152" /></p>
 </div>
 <div id="modeling-questions" class="section level2">
 <h2>Modeling questions</h2>
@@ -137,8 +157,8 @@ log_odds %&gt;%
        title = &quot;Over/Under representation of different beer categories\n per US State&quot;) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 20) +
   scale_fill_manual(values = getPalette(8))</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-3-1.png" width="1152" /></p>
-<p>Our analysis suggest that <code>beer categories</code>: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.</p>
+<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" width="1152" /></p>
+<p>The analysis suggest that <code>beer categories</code>: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.</p>
 <p>We can also specifically look at <code>beer styles</code> to to check the robustness of the claim.</p>
 <pre class="r"><code>beer_awards_joined %&gt;%
   filter(fct_lump(state, 4) != &quot;Other&quot;,
@@ -158,8 +178,8 @@ log_odds %&gt;%
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
   scale_fill_manual(values = getPalette(8))</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" width="1152" /></p>
-<p>Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as while California produces a lot of award winning Irish Dry and Imperial Stouts, Oregon still produces a wide range of award winning Stouts. However, other aspects of the specialization claim were understated as the weighted log odds <code>Dark Largers</code> are very positive in Colorado and Texas and are very negative in California and Oregon. This is without any over/under representation in any specific <code>beer category</code>.</p>
+<p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="1152" /></p>
+<p>Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as the <code>Robust Porter</code> is over represented in California, however, <code>Porters</code> in general are not. Various specific categories of <code>Wheat Beers</code> are only vaguely over/under represented , the beer style of <code>Wheat Beers</code> are over represented in Colorado and under presented in California. Alternatively, in Texas, the <code>German Style Wheat Ale</code> is very over represented however, <code>Wheat Beers</code> in general are not. <code>Dark Largers</code> beer style is very positive in Colorado and Texas and are very negative in California and Oregon. However, no specific category of dark lagers are particularly over/under representation.</p>
 <p>We can also view this plot throughout the US as a proxy for specialization zones in the US.</p>
 <pre class="r"><code>library(geofacet)
 beer_awards_joined %&gt;%
@@ -178,8 +198,8 @@ beer_awards_joined %&gt;%
   scale_fill_manual(values = getPalette(8)) +
   labs(x=&quot;Weighted Log-Odds&quot;, y=&quot;Beer Styles&quot;, fill=&quot;Beer Styles&quot;,
        title = &quot;Weighted Log-Odds of different Beer Styles throughout the US&quot;)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="1152" /></p>
-<p>Lastly, we can regress number of specific beer style and year to see if any beer styles are becoming more popular.</p>
+<p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="1152" /></p>
+<p>Lastly, we can regress number of specific beer style with year to see if any beer styles are becoming more popular over time.</p>
 <pre class="r"><code>library(broom)
 by_year_style &lt;- beer_awards_joined %&gt;%
   add_count(year, name = &quot;year_total&quot;) %&gt;%
@@ -193,9 +213,9 @@ over_under &lt;- by_year_style %&gt;%
   unnest(tidied) %&gt;%
   filter(term == &quot;year&quot;) %&gt;%
   mutate(p.value = format.pval(round(p.value, 2)),
-         style = fct_reorder(style, estimate))</code></pre>
-<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
-<pre class="r"><code>over_under %&gt;%
+         style = fct_reorder(style, estimate))
+
+over_under %&gt;%
   ggplot() +
   aes(x=estimate, y=style) +
   geom_point(size=3) +
@@ -207,5 +227,5 @@ over_under &lt;- by_year_style %&gt;%
        y = &quot;&quot;) +
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="1152" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-7-1.png" width="1152" /></p>
 </div>
