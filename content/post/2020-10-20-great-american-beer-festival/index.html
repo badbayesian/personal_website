@@ -6,14 +6,10 @@ slug: great-american-beer-festival
 categories:
   - R
   - tidytuesday
-subtitle: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) and what what beer styles are becoming more popular."
-summary: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) and what what beer styles are becoming more popular."
+subtitle: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
+summary: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
 lastmod: '2020-10-20T13:38:44-05:00'
 featured: no
-image:
-  caption: ''
-  focal_point: ''
-  preview_only: no
 ---
 
 <link href="index_files/anchor-sections/anchor-sections.css" rel="stylesheet" />
@@ -100,8 +96,7 @@ beer_awards_joined &lt;- beer_joined %&gt;%
          category = str_to_title(category)) %&gt;%
   filter(winner) %&gt;%
   distinct()</code></pre>
-<p>There are 448 different categories with on average 11.1 beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially for time series or geospatial models where we would additionally cut on year and state. This fact will come inhandly later in the analysis.</p>
-<p>We can aggregate <code>beer category</code> to <code>beer style</code> as defined by <a href="https://www.beeradvocate.com/beer/styles/">Beer Advocate</a>. This larger set of beers has only 15 different buckets and has on average 343.43 beers in each style.</p>
+<p>There are 448 different categories with on average 11.1 beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially time series or geospatial models. As such, we can aggregate <code>beer category</code> to <code>beer style</code>, as defined by <a href="https://www.beeradvocate.com/beer/styles/">Beer Advocate</a>, to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only 15 different buckets with on average 343.43 beers in each style. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.</p>
 <pre class="r"><code>beer_awards_joined %&gt;%
   mutate(style = if_else(is.na(style), &quot; NA&quot;, style),
          style = fct_reorder(style, desc(style))) %&gt;%

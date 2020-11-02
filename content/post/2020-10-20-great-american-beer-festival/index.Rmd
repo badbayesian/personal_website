@@ -6,14 +6,10 @@ slug: great-american-beer-festival
 categories:
   - R
   - tidytuesday
-subtitle: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) and what what beer styles are becoming more popular."
-summary: "Exploring #TidyTuesday [The Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) and what what beer styles are becoming more popular."
+subtitle: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
+summary: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
 lastmod: '2020-10-20T13:38:44-05:00'
 featured: no
-image:
-  caption: ''
-  focal_point: ''
-  preview_only: no
 ---
 
 ```{r setup, include=FALSE}
@@ -110,9 +106,7 @@ beer_awards_joined <- beer_joined %>%
   filter(winner) %>%
   distinct()
 ```
-There are `r length(unique(beer_awards_joined$category))` different categories with on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially for time series or geospatial models where we would additionally cut on year and state. This fact will come inhandly later in the analysis.
-
-We can aggregate `beer category` to `beer style` as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/). This larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets and has on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each style.
+There are `r length(unique(beer_awards_joined$category))` different categories with on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially time series or geospatial models. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each style. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
 
 ```{r}
 beer_awards_joined %>%
