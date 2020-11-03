@@ -7,7 +7,7 @@ categories:
   - R
   - tidytuesday
 subtitle: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
-summary: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
+summary: "Tl;Dr The reign of light beers is over and at least judges are more likely to award medals to Wild/Sour beers, IPAs and Specialty Beers."
 lastmod: '2020-10-20T13:38:44-05:00'
 featured: no
 ---
@@ -23,7 +23,7 @@ knitr::opts_chunk$set(root.dir = loc)
 
 ```
 
-This week, we explore which beer styles and categories are are over/under represented in different states and over time.
+This week, we explore which beer styles and categories are over/under represented in different states and over time.
 
 ## Exploring the data
 
@@ -106,7 +106,7 @@ beer_awards_joined <- beer_joined %>%
   filter(winner) %>%
   distinct()
 ```
-There are `r length(unique(beer_awards_joined$category))` different categories with on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially time series or geospatial models. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each style. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
+There are `r length(unique(beer_awards_joined$category))` different `beer categories` with on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially time series or geospatial models. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each style. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
 
 ```{r}
 beer_style_counts <- beer_awards_joined %>%
@@ -175,6 +175,8 @@ log_odds %>%
   scale_fill_manual(values = getPalette(8))
 ```
 
+To read the graph, XXX.
+
 The analysis suggest that `beer categories`: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.
 
 We can also specifically look at `beer styles` to to check the robustness of the claim.
@@ -200,7 +202,7 @@ beer_awards_joined %>%
   scale_fill_manual(values = getPalette(8))
 ```
 
-Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as the `Robust Porter` is over represented in California, however, `Porters` in general are not. Various specific categories of `Wheat Beers` are only vaguely over/under represented , the beer style of `Wheat Beers` are over represented in Colorado and under presented in California. Alternatively, in Texas, the `German Style Wheat Ale` is very over represented however, `Wheat Beers` in general are not. `Dark Largers` beer style is very positive in Colorado and Texas and are very negative in California and Oregon. However, no specific category of dark lagers are particularly over/under representation.
+Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as the `Robust Porter` is over represented in California, however, `Porters` in general are not. Various specific categories of `Wheat Beers` are only vaguely over/under represented, however, the beer style of `Wheat Beers` are over represented in Colorado and under presented in California. Alternatively, in Texas, the `German Style Wheat Ale` is very over represented however, `Wheat Beers` in general are not. `Dark Lagers` beer style is very positive in Colorado and Texas and are very negative in California and Oregon. However, no specific category of `Dark Lagers` are particularly over/under representation.
 
 We can also view this plot throughout the US as a proxy for specialization zones in the US.
 
@@ -256,6 +258,29 @@ over_under %>%
        title = "Which beers styles are increasingly winning more\n over time throughout the US?",
        y = "") +
   theme(text = element_text(size = 15)) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
+```
+
+
+```{r, include=FALSE, echo=FALSE}
+
+by_year_state_style <- beer_awards_joined %>%
+  add_count(year, name = "year_total") %>%
+  mutate(state = fct_lump(state, 4)) %>%
+  count(style, state, year, year_total, sort = TRUE) %>%
+  mutate(pct_year = n / year_total)
+
+by_year_state_style %>%
+  mutate(style = fct_lump(style, 5)) %>%
+  filter(!state %in% c(NA, "Other")) %>%
+  ggplot() +
+  aes(x=year, y=pct_year, color=style) +
+  geom_line(size=1) +
+  expand_limits(y = 0) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_wrap(~ state, ncol = 2) +
+  theme_bw() +
+  labs(y = "% per year", x = "Year", color = "Beer styles") +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```
 
