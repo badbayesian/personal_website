@@ -35,7 +35,7 @@ historical_events <- function(frame) {
   event <- case_when(
     year <= 1803 ~ "Organization of territory after Revolutionary War",
     year <= 1819 ~ "Purchase of Louisiana and Spanish Cession",
-    year <= 1845 ~ "Northwest expansion (inc. Trial of Tears)",
+    year <= 1845 ~ "Northwest expansion (inc. Trail of Tears)",
     year <= 1861 ~ "Mexican-American War and Southwest expansion",
     year <= 1865 ~ "Civil War",
     year <= 1897 ~ "Reconstruction and western statehood",
@@ -65,7 +65,6 @@ usa[nrow(usa)+length(dates)-1,] <- NA
 usa$year <- dates
 usa$geometry <- usa$geometry[1]
 usa$states <- FALSE
-usa$terr_type <- if
 
 maps <- bind_rows(maps, usa) 
 

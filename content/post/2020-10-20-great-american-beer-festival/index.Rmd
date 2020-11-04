@@ -6,10 +6,13 @@ slug: great-american-beer-festival
 categories:
   - R
   - tidytuesday
-subtitle: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/) to find how and which states specialized in making award winning beers."
-summary: "Tl;Dr The reign of light beers is over and at least judges are more likely to award medals to Wild/Sour beers, IPAs and Specialty Beers."
+subtitle: "Exploring #TidyTuesday [Great American Beer Festival](https://www.greatamericanbeerfestival.com/the-competition/winners/)"
+summary: "The reign of light beers is ending and at least judges are more likely to award medals to Wild/Sour beers, IPAs, and Specialty Beers."
 lastmod: '2020-10-20T13:38:44-05:00'
 featured: no
+editor_options: 
+  chunk_output_type: inline
+overridetime: 8
 ---
 
 ```{r setup, include=FALSE}
@@ -20,19 +23,23 @@ knitr::opts_chunk$set(fig.width=12, fig.height=10)
 loc <- paste0(rprojroot::find_rstudio_root_file(), "/content/post/2020-10-20-great-american-beer-festival/")
 setwd(loc)
 knitr::opts_chunk$set(root.dir = loc)
-
 ```
 
-This week, we explore which beer styles and categories are over/under represented in different states and over time.
+This week, we explore which beer styles and categories are over/under represented in the Great American Beer Festival winners.
 
 ## Exploring the data
 
-```{r, warning=FALSE, message=FALSE}
-library(tidyverse)
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+library(readr)
 library(ggplot2)
+library(stringr)
+library(tidyr)
+library(dplyr)
+library(forcats)
 library(fuzzyjoin)
 library(stringdist)
 library(tigris)
+library(plotly)
 
 beer_styles <- read_csv("beer_styles.csv")
 
@@ -106,44 +113,82 @@ beer_awards_joined <- beer_joined %>%
   filter(winner) %>%
   distinct()
 ```
-There are `r length(unique(beer_awards_joined$category))` different `beer categories` with on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per category, the statistical power will be too low for most models especially time series or geospatial models. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each style. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
-
-```{r}
-beer_style_counts <- beer_awards_joined %>%
-  mutate(style = if_else(is.na(style), " NA", style),
-         style = fct_reorder(style, desc(style))) %>%
-  count(style)
-
-beer_style_counts %>% 
-  ggplot() +
-  aes(y=style, x=n, fill=style) +
-  geom_col(position = "dodge") +
-  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
-  labs(x = "Count", y = "Beer Styles", title = "Number of Beer Styles") +
-  theme(legend.position = "none") +
-  scale_fill_manual(values = getPalette(15))
-```
+With so many `beer categories` (`r length(unique(beer_awards_joined$category))`) there are only on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per `beer category`, the statistical power will be too low for most models especially time series or geospatial models which additionally reduce the sample size per bucket. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each `beer style`. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
 
 ```{r, message=FALSE}
-beer_awards_joined %>%
+library(dplyr)
+library(forcats)
+library(ggplot2)
+library(cowplot)
+
+counts <- beer_awards_joined %>%
+  mutate(style = if_else(is.na(style), " NA", style)) %>%
+  group_by(style) %>%
+  summarise(total_counts=n())
+
+counts_total <- beer_awards_joined %>%
   mutate(style = if_else(is.na(style), " NA", style)) %>%
   count(style, category) %>%
   group_by(style) %>%
-  summarise(category_numbers = n()) %>%
-  inner_join(beer_style_counts, by="style") %>%
-  mutate(style = fct_reorder(style, desc(style))) %>%
+  summarise(num_of_beer_cat = n()) %>%
+  inner_join(counts, by="style")
+
+counts_total %>%
   ggplot() +
-  aes(x=category_numbers, y=style, fill=style) +
+  aes(y=fct_reorder(style, desc(style)), x=total_counts,
+      fill=fct_reorder(style, desc(style))) +
   geom_col(position = "dodge") +
-  geom_text(aes(label = paste0("n=", n)),
-            size=3,
-            nudge_x = -2,
-            nudge_y = -0.25) +
+  geom_text(aes(label=paste0("Buckets: ", num_of_beer_cat)),
+            size=3.5, nudge_x = -45, nudge_y = -0.25) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
-  labs(x = "Count", y = "Beer Styles", title = "Number of Beer Categories per Beer Style") +
+  labs(x = "# of Medals Awarded", y = "Beer Styles",
+       title = "Medals Awarded per Beer Styles",
+       caption = "Buckets: Number of different Beer Categories") +
   theme(legend.position = "none") +
   scale_fill_manual(values = getPalette(15))
 ```
+
+
+```{r fig.height=6.75, fig.width=9, message=FALSE, warning=FALSE}
+library(plotly)
+viz <- beer_awards_joined %>%
+  add_count(year, name = "year_total") %>%
+  count(style, year, year_total, sort = TRUE) %>%
+  mutate(pct_year = n / year_total) %>%
+  ggplot() +
+  aes(y=pct_year, x=year, color=style, group=style,
+      text = paste0(style, ": ", year, "\nCount: ", n)) +
+  geom_point() +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
+  labs(x = "Year", y = "", color = "Beer Style", 
+       title = "% of Medals Awarded to Beer Style over Time") +
+  scale_color_manual(values = getPalette(15))
+ggplotly(viz, tooltip = "text")
+```
+
+Only Pale Ale, Specialty Beers, and recently, Wild/Sour Beers are the only `beer styles` which are differentiable in terms of beer medal awarded from the rest.
+
+```{r fig.height=6.75, fig.width=9, message=FALSE, warning=FALSE}
+viz_state <- beer_awards_joined %>%
+  filter(fct_lump(state, 10) != "Other") %>%
+  add_count(year, name = "year_total") %>%
+  count(state, year, year_total, sort = TRUE) %>%
+  mutate(pct_year = n / year_total) %>%
+  ggplot() +
+  aes(y=pct_year, x=year, color=state, group=state,
+      text = paste0(state, ": ", year, "\nCount: ", n)) +
+  geom_point() +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
+  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
+  labs(x = "Year", y = "", color = "State", 
+       title = "% of Medals Awarded to Breweries in a\nState over Time") +
+  scale_color_manual(values = getPalette(15))
+ggplotly(viz_state, tooltip = "text")
+```
+Only California, and Colorado are the only `states` which are differentiable in terms of beer medal awarded from the rest.
 
 ## Modeling questions
 
@@ -152,6 +197,7 @@ One would imagine that different states may specialize in different categories o
 ```{r}
 library(tidylo)
 library(tidytext)
+library(tidyr)
 
 log_odds <- beer_awards_joined %>%
   filter(fct_lump(category, 8) != "Other",
@@ -170,12 +216,11 @@ log_odds %>%
   scale_y_reordered() +
   facet_wrap(~ state, nrow = 4, scale = "free_y") +
   labs(y = "Beer Category", x = "Weighted Log Odds", fill = "Beer style",
-       title = "Over/Under representation of different beer categories\n per US State") +
+       title = "Over/Under representation of different beer categories\n per US State",
+       caption = "Positive Log Odds = Over represented\nNegative Log Odds = Under represented\n") +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 20) +
   scale_fill_manual(values = getPalette(8))
 ```
-
-To read the graph, XXX.
 
 The analysis suggest that `beer categories`: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.
 
@@ -196,7 +241,8 @@ beer_awards_joined %>%
   scale_y_reordered() +
   facet_wrap(~ state, nrow = 4, scale = "free_y") +
   labs(y = "Beer style", x = "Weighted Log Odds", fill = "Beer style",
-       title = "Over/Under representation of different beer styles\n per US State.") +
+       title = "Over/Under representation of different beer styles\n per US State.",
+       caption = "Positive Log Odds = Over represented\nNegative Log Odds = Under represented\n") +
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
   scale_fill_manual(values = getPalette(8))
@@ -223,16 +269,16 @@ beer_awards_joined %>%
   theme_bw() +
   scale_fill_manual(values = getPalette(8)) +
   labs(x="Weighted Log-Odds", y="Beer Styles", fill="Beer Styles",
-       title = "Weighted Log-Odds of different Beer Styles throughout the US")
+       title = "Weighted Log-Odds of different Beer Styles throughout the US",
+       caption = "Positive Log Odds = Over represented\nNegative Log Odds = Under represented\n")
 ```
-
-
-
 
 Lastly, we can regress number of specific beer style with year to see if any beer styles are becoming more popular over time.
 
 ```{r, warnings=FALSE, message=FALSE}
 library(broom)
+library(dplyr)
+library(purrr)
 by_year_style <- beer_awards_joined %>%
   add_count(year, name = "year_total") %>%
   count(style, year, year_total, sort = TRUE) %>%
@@ -251,58 +297,47 @@ over_under %>%
   ggplot() +
   aes(x=estimate, y=style) +
   geom_point(size=3) +
-  geom_vline(xintercept = 0, lty = 2) +
+  geom_vline(xintercept = 0, lty = 2, color="red") +
   geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = .1, size=1) +
   theme_bw() +
   labs(x = "Estimated slope",
-       title = "Which beers styles are increasingly winning more\n over time throughout the US?",
+       title = "Which beers styles are increasingly winning more\nAwards over time throughout the US?",
        y = "") +
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```
 
-
-```{r, include=FALSE, echo=FALSE}
-
-by_year_state_style <- beer_awards_joined %>%
+```{r, warnings=FALSE, message=FALSE}
+library(broom)
+library(dplyr)
+library(purrr)
+by_year_state <- beer_awards_joined %>%
   add_count(year, name = "year_total") %>%
-  mutate(state = fct_lump(state, 4)) %>%
-  count(style, state, year, year_total, sort = TRUE) %>%
-  mutate(pct_year = n / year_total)
+  count(state, year, year_total, sort = TRUE) %>%
+  mutate(pct_year = n / year_total) 
 
-by_year_state_style %>%
-  mutate(style = fct_lump(style, 5)) %>%
-  filter(!state %in% c(NA, "Other")) %>%
+over_under_state <- by_year_state %>%
+  group_by(state) %>%
+  summarize(model = list(glm(cbind(n, year_total - n) ~ year, family = "binomial"))) %>%
+  mutate(tidied = map(model, tidy, conf.int = TRUE)) %>%
+  unnest(tidied) %>%
+  filter(term == "year") %>%
+  mutate(p.value = format.pval(round(p.value, 2)),
+         state = fct_reorder(state, estimate))
+
+over_under_state %>%
+  filter(state!="MS" &
+           (estimate > quantile(estimate, 0.85) |
+              estimate < quantile(estimate, 0.15))) %>%
   ggplot() +
-  aes(x=year, y=pct_year, color=style) +
-  geom_line(size=1) +
-  expand_limits(y = 0) +
-  scale_y_continuous(labels = scales::percent) +
-  facet_wrap(~ state, ncol = 2) +
+  aes(x=estimate, y=state) +
+  geom_point(size=3) +
+  geom_vline(xintercept = 0, lty = 2, color="red") +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = .1, size=1) +
   theme_bw() +
-  labs(y = "% per year", x = "Year", color = "Beer styles") +
-  theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
-```
-
-
-```{r, include=FALSE, echo=FALSE}
-
-by_year_state_style <- beer_awards_joined %>%
-  add_count(year, name = "year_total") %>%
-  mutate(state = fct_lump(state, 4)) %>%
-  count(style, state, year, year_total, sort = TRUE) %>%
-  mutate(pct_year = n / year_total)
-
-by_year_state_style %>%
-  mutate(style = fct_lump(style, 5)) %>%
-  filter(!state %in% c(NA, "Other")) %>%
-  ggplot() +
-  aes(x=year, y=pct_year, color=style) +
-  geom_line(size=1) +
-  expand_limits(y = 0) +
-  scale_y_continuous(labels = scales::percent) +
-  facet_wrap(~ state, ncol = 2) +
-  theme_bw() +
-  labs(y = "% per year", x = "Year", color = "Beer styles") +
+  labs(x = "Estimated slope",
+       title = "Which States are increasingly winning more Awards\n over time throughout the US?",
+       y = "") +
+  theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```

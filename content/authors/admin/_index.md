@@ -19,7 +19,7 @@ interests:
 organizations:
 - name: University of Chicago
   url: ""
-role: Graduate Student
+role: Recent CS MS Grad
 social:
 - icon: envelope
   icon_pack: fas

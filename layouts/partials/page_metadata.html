@@ -40,9 +40,18 @@
 
   {{ if and (eq $page.Type "post") (not (or (eq site.Params.reading_time false) (eq $page.Params.reading_time false))) }}
   <span class="middot-divider"></span>
+{{ if and (eq $page.Type "post") (not (or (eq site.Params.reading_time false) (eq $page.Params.reading_time false))) }}
+  {{ $read_time := 0 }}
+  {{ if $page.Params.overridetime }}
+    {{ $read_time = $page.Params.overridetime }}
+  {{ else }}
+    {{ $read_time = $page.ReadingTime }}
+  {{ end }}
+  <span class="middot-divider"></span>
   <span class="article-reading-time">
-    {{ $page.ReadingTime }} {{ i18n "minute_read" }}
+    {{ $read_time }} {{ i18n "minute_read" }}
   </span>
+  {{ end }}
   {{ end }}
 
   {{/* Show Disqus comment count if enabled. */}}
