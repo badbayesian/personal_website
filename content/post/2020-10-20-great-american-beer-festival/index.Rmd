@@ -25,9 +25,12 @@ setwd(loc)
 knitr::opts_chunk$set(root.dir = loc)
 ```
 
-This week, we explore which beer styles and categories are over/under represented in the Great American Beer Festival winners.
+This week, we explore which beer styles and categories are over/under represented in the Great American Beer Festival winners. I will be focusing on answering the following two questions:
 
-## Exploring the data
+1. Is there and to what level of geo-aggregation are breweries specializing in `beer styles` for award winning beers?
+2. Are recent changes in popularity of awarded beers being driven by `brewery location`, `beer styles` or both?
+
+# Exploring the data
 
 ```{r, warning=FALSE, message=FALSE, cache=TRUE}
 library(readr)
@@ -142,12 +145,11 @@ counts_total %>%
             size=3.5, nudge_x = -45, nudge_y = -0.25) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25) +
   labs(x = "# of Medals Awarded", y = "Beer Styles",
-       title = "Medals Awarded per Beer Styles",
+       title = "Medals Awarded per Beer Styles", 
        caption = "Buckets: Number of different Beer Categories") +
   theme(legend.position = "none") +
   scale_fill_manual(values = getPalette(15))
 ```
-
 
 ```{r fig.height=6.75, fig.width=9, message=FALSE, warning=FALSE}
 library(plotly)
@@ -168,7 +170,7 @@ viz <- beer_awards_joined %>%
 ggplotly(viz, tooltip = "text")
 ```
 
-Only Pale Ale, Specialty Beers, and recently, Wild/Sour Beers are the only `beer styles` which are differentiable in terms of beer medal awarded from the rest.
+Only Pale Ale, Specialty Beers, and recently, Wild/Sour Beers are the only `beer styles` which are differentiable in terms of medals awarded from the rest.
 
 ```{r fig.height=6.75, fig.width=9, message=FALSE, warning=FALSE}
 viz_state <- beer_awards_joined %>%
@@ -188,9 +190,9 @@ viz_state <- beer_awards_joined %>%
   scale_color_manual(values = getPalette(15))
 ggplotly(viz_state, tooltip = "text")
 ```
-Only California, and Colorado are the only `states` which are differentiable in terms of beer medal awarded from the rest.
+Only California, and Colorado are the only `states` which are differentiable in terms of medals awarded from the rest.
 
-## Modeling questions
+# Modeling
 
 One would imagine that different states may specialize in different categories or styles of beer. We can model this using `Log Odds` which creates a statistic of the strength of the relationship between two events. In our example, we might ask what beer categories are over/under represented in a given state. This may indicate a beverage specialization and perhaps a consumer preference for that state.
 
@@ -250,12 +252,13 @@ beer_awards_joined %>%
 
 Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as the `Robust Porter` is over represented in California, however, `Porters` in general are not. Various specific categories of `Wheat Beers` are only vaguely over/under represented, however, the beer style of `Wheat Beers` are over represented in Colorado and under presented in California. Alternatively, in Texas, the `German Style Wheat Ale` is very over represented however, `Wheat Beers` in general are not. `Dark Lagers` beer style is very positive in Colorado and Texas and are very negative in California and Oregon. However, no specific category of `Dark Lagers` are particularly over/under representation.
 
-We can also view this plot throughout the US as a proxy for specialization zones in the US.
+We can also view this plot throughout the US as a proxy for larger specialization zones (e.g West Coast, East Coast, etc.) in the US.
 
 ```{r}
 library(geofacet)
 beer_awards_joined %>%
-  filter(fct_lump(style, 8) != "Other") %>%
+  filter(style %in% c("Dark Lagers", "Pale Ales", "Specialty Beers", "Stouts",
+                      "India Pale Ales", "Strong Ales", "Wheat Beers", "Wild/Sour Beers")) %>%
   count(state, style) %>%
   complete(state, style, fill = list(n=0)) %>%
   bind_log_odds(state, style, n) %>%
@@ -267,13 +270,15 @@ beer_awards_joined %>%
   facet_geo(~ state, grid = "us_state_grid2") +
   scale_y_reordered() +
   theme_bw() +
-  scale_fill_manual(values = getPalette(8)) +
+  scale_fill_manual(values = getPalette(12)) +
   labs(x="Weighted Log-Odds", y="Beer Styles", fill="Beer Styles",
        title = "Weighted Log-Odds of different Beer Styles throughout the US",
        caption = "Positive Log Odds = Over represented\nNegative Log Odds = Under represented\n")
 ```
 
-Lastly, we can regress number of specific beer style with year to see if any beer styles are becoming more popular over time.
+In short, we see not only evidence of state specialization but also regional specialization. The West Coast with California, Oregon, and Washington all have over representation `Strong Ales`, and `Stouts`, while under representing `Pale Lagers`, and `Dark Lagers`. Only New York also over represents `Stout` beer style. The Midwest to Appalachian region, are more varied in terms of what `beer styles` are represented, however, `Dark Lagers` and `Pale Lagers` have a strong presences. Texas has a similar profile of awarded beer styles to the Midwest than the West Coast.
+
+Lastly, we can regress number of specific beer style with year to see if any beer styles are becoming more popular over time or if any state is becoming more popular.
 
 ```{r, warnings=FALSE, message=FALSE}
 library(broom)
@@ -306,6 +311,8 @@ over_under %>%
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```
+
+`Wild/Sour Beers` are a clear up-and-coming beer award winners. An interesting note is that if we return to the previous figure, `Wild/Sour Beers` have marginal state level over representation throughout the US. Similarly, `Specialty Beer` is generally not under nor over represented anywhere except where it's under represented in California and in Oregon. On the other hand, `India Pale Ales` seems mostly driven by breweries in California.
 
 ```{r, warnings=FALSE, message=FALSE}
 library(broom)
@@ -341,3 +348,5 @@ over_under_state %>%
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```
+
+
