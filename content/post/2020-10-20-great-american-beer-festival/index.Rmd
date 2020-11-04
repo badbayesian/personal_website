@@ -1,5 +1,5 @@
 ---
-title: Great American Beer Festival
+title: Exploring Changes in Preferences in Beer Accross the US
 author: badbayesian
 date: '2020-10-20'
 slug: great-american-beer-festival
@@ -27,8 +27,9 @@ knitr::opts_chunk$set(root.dir = loc)
 
 This week, we explore which beer styles and categories are over/under represented in the Great American Beer Festival winners. I will be focusing on answering the following two questions:
 
-1. Is there and to what level of geo-aggregation are breweries specializing in `beer styles` for award winning beers?
-2. Are recent changes in popularity of awarded beers being driven by `brewery location`, `beer styles` or both?
+1. Are recent changes in popularity of awarded beers driven by `brewery location`, `beer styles`, or both?
+2. To what extent do breweries geo-aggregate `beer styles` for award winning beers?
+
 
 # Exploring the data
 
@@ -116,7 +117,7 @@ beer_awards_joined <- beer_joined %>%
   filter(winner) %>%
   distinct()
 ```
-With so many `beer categories` (`r length(unique(beer_awards_joined$category))`) there are only on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per `beer category`, the statistical power will be too low for most models especially time series or geospatial models which additionally reduce the sample size per bucket. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. Now, the larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each `beer style`. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
+With so many `beer categories` (`r length(unique(beer_awards_joined$category))`) there are only on average `r round(mean(table(beer_awards_joined$category)), 2)` beers in each category. With such a low sample size per `beer category`, the statistical power will be too low to apply time series or geospatial models, given they additionally reduce the sample size per bucket. As such, we can aggregate `beer category` to `beer style`, as defined by [Beer Advocate](https://www.beeradvocate.com/beer/styles/), to created larger buckets and increase the sample size per bucket. The corresponding larger set of beers has only `r length(unique(beer_awards_joined$style))` different buckets with on average `r round(mean(table(beer_awards_joined$style)), 2)` beers in each `beer style`. As we then cut on state (50+1) and time (1987 - 2020), we can be assured that enough data will be within most buckets so that the analysis has sufficient power.
 
 ```{r, message=FALSE}
 library(dplyr)
@@ -224,9 +225,9 @@ log_odds %>%
   scale_fill_manual(values = getPalette(8))
 ```
 
-The analysis suggest that `beer categories`: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in thier beers.
+The analysis suggest that `beer categories`: Irish Dry and Imperial are more likely to come from California while Bock and (German/Bohemian) Pilseners are more likely to come from Colorado. Interestingly, some of the states have strong reversals in their log odds in comparison to other states suggesting states are specializing in their beers.
 
-We can also specifically look at `beer styles` to to check the robustness of the claim.
+We can also specifically look at `beer styles` to check the robustness of the claim.
 
 ```{r}
 beer_awards_joined %>%
@@ -250,7 +251,7 @@ beer_awards_joined %>%
   scale_fill_manual(values = getPalette(8))
 ```
 
-Aggregating the data still shows evidence of beer specialization per state. Some aspects if the specialization claim was over stated as the `Robust Porter` is over represented in California, however, `Porters` in general are not. Various specific categories of `Wheat Beers` are only vaguely over/under represented, however, the beer style of `Wheat Beers` are over represented in Colorado and under presented in California. Alternatively, in Texas, the `German Style Wheat Ale` is very over represented however, `Wheat Beers` in general are not. `Dark Lagers` beer style is very positive in Colorado and Texas and are very negative in California and Oregon. However, no specific category of `Dark Lagers` are particularly over/under representation.
+Aggregating the data still shows evidence of beer specialization per state. Some aspects of the specialization claim were  over-stated as the `Robust Porter` is over-represented in California, however, `Porters` in general are not. Various specific categories of `Wheat Beers` are only vaguely over/under represented, however, the beer style of `Wheat Beers` are over-represented in Colorado and under-represented in California. Alternatively, in Texas, the `German Style Wheat Ale` is very over represented however, `Wheat Beers` in general are not. The `Dark Lagers` beer style is very over-represented in Colorado and Texas and are very under-represented in California and Oregon. However, no specific category of `Dark Lagers` is particularly over/under represented.
 
 We can also view this plot throughout the US as a proxy for larger specialization zones (e.g West Coast, East Coast, etc.) in the US.
 
@@ -276,9 +277,9 @@ beer_awards_joined %>%
        caption = "Positive Log Odds = Over represented\nNegative Log Odds = Under represented\n")
 ```
 
-In short, we see not only evidence of state specialization but also regional specialization. The West Coast with California, Oregon, and Washington all have over representation `Strong Ales`, and `Stouts`, while under representing `Pale Lagers`, and `Dark Lagers`. Only New York also over represents `Stout` beer style. The Midwest to Appalachian region, are more varied in terms of what `beer styles` are represented, however, `Dark Lagers` and `Pale Lagers` have a strong presences. Texas has a similar profile of awarded beer styles to the Midwest than the West Coast.
+In short, we see not only evidence of state specialization but also regional specialization. The West Coast with California, Oregon, and Washington all have over representation in `Strong Ales`, and `Stouts`, while under representing `Pale Lagers`, and `Dark Lagers`. Only New York also over-represents `Stout` style beers. The Midwest to Appalachian regions are more varied in `beer styles` represented, however, `Dark Lagers` and `Pale Lagers` have strong presences. Texas has a similar profile of awarded beer styles to the Midwest than the West Coast.
 
-Lastly, we can regress number of specific beer style with year to see if any beer styles are becoming more popular over time or if any state is becoming more popular.
+Lastly, we can regress number of specific `beer styles` by `year` and `state` by `year` to compare whether the newer awards are being driven by `beer style` preferences or `state` preferences.
 
 ```{r, warnings=FALSE, message=FALSE}
 library(broom)
@@ -311,8 +312,6 @@ over_under %>%
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```
-
-`Wild/Sour Beers` are a clear up-and-coming beer award winners. An interesting note is that if we return to the previous figure, `Wild/Sour Beers` have marginal state level over representation throughout the US. Similarly, `Specialty Beer` is generally not under nor over represented anywhere except where it's under represented in California and in Oregon. On the other hand, `India Pale Ales` seems mostly driven by breweries in California.
 
 ```{r, warnings=FALSE, message=FALSE}
 library(broom)
@@ -348,5 +347,11 @@ over_under_state %>%
   theme(text = element_text(size = 15)) +
   theme_ipsum_ps(axis_title_size = 15, plot_title_size = 25)
 ```
+
+# Conclusion
+`Wild/Sour Beers` style are a clear up-and-coming beer award-winner. An interesting note is that if we return to the previous figure, `Wild/Sour Beers` style have marginal state level over representation throughout the US. Similarly, `Specialty Beer` is generally not under nor over represented anywhere except where it's under-represented in California and in Oregon. On the other hand, `India Pale Ales` seems mostly driven by breweries in California. This indicates that changes in `beer style` preferences rather than changes in `state` preferences is driving the changes.
+
+The is some evidence of specialization on the West Coast with `Stouts` and `Strong Ales` being over-represented, however, most specialization is solely at the state level - nearby states are equally variable to far away states. Moreover, there is some evidence of regional specialization in under-represented `beer styles`. In other words, `Dark Lagers` and `Specialty Beers` are under-represented in the West Coast while `India Pale Ales` are under-represented in Texas, Colorado, and Wisconsin.
+
 
 
