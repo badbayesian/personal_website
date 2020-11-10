@@ -1,5 +1,5 @@
 ---
-title: Exploring Changes in Preferences in Beer Accross the US
+title: Exploring Changes in Preferences in Beer Across the US
 author: badbayesian
 date: '2020-10-20'
 slug: great-american-beer-festival
