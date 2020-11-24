@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -41,8 +42,8 @@ func ixMax(values []float64) int {
 
 func main() {
 	rand.Seed(time.Now().Unix())
-	// var cores = sync.WaitGroup
-	// threads := 4
+	var cores = sync.WaitGroup
+	threads := 4
 	n := 20
 	rounds := 1000000
 	count := make([]int, n)
