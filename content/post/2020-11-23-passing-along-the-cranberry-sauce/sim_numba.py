@@ -1,11 +1,12 @@
 """Numba version of cranberry sauce passing"""
 import argparse
+from typing import List
 import numpy as np
 from numba import njit, bool_, int64, prange
 
 
-@njit
-def simulation(size: int):
+@njit(parallel=True)
+def simulation(size: int) -> int:
     """Simulate one round of cranberry sauce passing."""
     visited = np.zeros(size, dtype=bool_)
     visited[0] = True
@@ -19,7 +20,7 @@ def simulation(size: int):
 
 
 @njit(parallel=True)
-def main(size: int = 20, rounds: int = 1000000, threads: int = 4):
+def main(size: int, rounds: int, threads: int) -> List[float]:
     """Parallel and rounds driver."""
     count = np.zeros(size, dtype=int64)
     if threads == 1:
@@ -32,7 +33,8 @@ def main(size: int = 20, rounds: int = 1000000, threads: int = 4):
                 count2d[i, simulation(size)] += 1
         count = np.sum(count2d, axis=0)
 
-    return count
+    freq = [i / (rounds * threads) for i in count]
+    return freq
 
 
 if __name__ == "__main__":
@@ -41,4 +43,5 @@ if __name__ == "__main__":
     arg.add_argument("-rounds", type=int, required=True)
     arg.add_argument("-threads", type=int, required=True)
     args = arg.parse_args()
-    print(main(size=args.size, rounds=args.rounds, threads=args.threads))
+    results = main(size=args.size, rounds=args.rounds, threads=args.threads)
+    print(results)

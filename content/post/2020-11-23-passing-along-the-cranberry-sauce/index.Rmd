@@ -9,7 +9,7 @@ categories:
   - The Riddler
 tags: []
 subtitle: ''
-summary: ''
+summary: 'IN PROGRESS'
 lastmod: '2020-11-23T20:50:55-06:00'
 featured: no
 image:
@@ -19,7 +19,7 @@ image:
 projects: []
 ---
 
-Answer: they are all equally except for you (1/19). Code at [here](https://github.com/badbayesian/personal_website/tree/master/content/post/2020-11-23-passing-along-the-cranberry-sauce).
+Answer: they are all equally likely except for you (1/19). Code at [here](https://github.com/badbayesian/personal_website/tree/master/content/post/2020-11-23-passing-along-the-cranberry-sauce).
 
 > From Patrick Lopatto comes a riddle we can all be thankful for:
 > 
