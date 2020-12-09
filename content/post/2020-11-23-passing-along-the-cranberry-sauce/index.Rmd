@@ -1,15 +1,13 @@
 ---
-title: Passing Along the Cranberry Sauce (Python vs Numba vs Go)
+title: Passing Along the Cranberry Sauce (Pure Python vs Numpy vs Numba)
 author: badbayesian
 date: '2020-11-23'
 slug: passing-along-the-cranberry-sauce
 categories:
   - python
-  - go
   - The Riddler
-tags: []
-subtitle: ''
-summary: 'IN PROGRESS'
+summary: 'Speeding up your program by over 40x with little cost'
+subtitle: 'Speeding up your program can be difficult and sometimes a worth wild endeavor'
 lastmod: '2020-11-23T20:50:55-06:00'
 featured: no
 image:
@@ -17,9 +15,28 @@ image:
   focal_point: ''
   preview_only: no
 projects: []
+disable_codefolding: true
+overridetime: 6
 ---
 
-Answer: they are all equally likely except for you (1/19). Code at [here](https://github.com/badbayesian/personal_website/tree/master/content/post/2020-11-23-passing-along-the-cranberry-sauce).
+This week, I will explore [538's Riddler](https://fivethirtyeight.com/features/can-you-pass-the-cranberry-sauce/) using simulation study and then talk about scaling up the simulation.
+
+Tl;Dr:
+```{R echo=FALSE, message=FALSE, warning=FALSE, warnings=TRUE}
+library(tibble)
+library(dplyr)
+library(scales)
+df <- tibble(Code=c("Pure Python", "Pure Python + Preallocated",
+                    "Numpy", "Numpy + Preallocated", "Numba",
+                    "Numba once complied", "Numba + Parallelized"),
+             Time=c(12.994, 14.516, 60.416, 5.995, 1.976, 0.319, 0.315)) %>%
+  mutate(Speedup = paste0(round(12.994/Time, 2), "x"))
+
+knitr::kable(df)
+```
+
+
+# Riddler
 
 > From Patrick Lopatto comes a riddle we can all be thankful for:
 > 
@@ -28,3 +45,246 @@ Answer: they are all equally likely except for you (1/19). Code at [here](https:
 > Instead of passing the sauce around in a circle, you pass it randomly to the person seated directly to your left or to your right. They then do the same, passing it randomly either to the person to their left or right. This continues until everyone has, at some point, received the cranberry sauce.
 >
 > Of the 20 people in the circle, who has the greatest chance of being the last to receive the cranberry sauce?
+
+## Pure Python
+
+We can start by simulating one round of the cranberry passing using pure python. Hence, we create a list to represent each person on the table. The zeroth (or first) person has cranberry sauce, who then passes it to their left or right with `direction = random.randint(2) * 2 - 1` until the cranberry sauce has reached all individuals, `visited_count == size`. Since the table is circular, we can use modular arithmetic (i.e. `last_pos = (pos + direction) % size`) so that the person on `visited[0]` can pass it to the person on `visited[size]` in one step and vice-versa.
+
+```{python, eval=FALSE}
+def pure_python_simulation(size: int) -> int:
+    """Simulate one round of cranberry sauce passing."""
+    visited = [False] * size
+    visited_count = 1
+    visited[0] = True
+    pos, last_pos = 0, 0
+    while visited_count != size:
+        direction = random.randint(0, 1) * 2 - 1
+        last_pos = (pos + direction) % size
+        pos = last_pos
+        if not visited[last_pos]:
+            visited_count += 1
+            visited[last_pos] = True
+    return last_pos
+```
+
+As with any simulation study, we need to conduct many simulations. You can look at other posts on why the answer is $\frac{1}{19} \approx 0.05263$, however, I am more interested in writing about how quickly this approach converges to a reasonable approximation. For example, if we run 1000 rounds of the pure python simulation, the probability of being the last person to receive the cranberry sauce is incorrect on the first significant figure, the tenths place, about ~half of the time. 
+```{python}
+import sim_pure
+sim_pure.main(20, 1000)
+```
+While this example has some nice structure such that assuming equal probability of all outcomes is intuitive, other more complicated probability models don't have that luxury. So, how many rounds of simulation do we need to run so that the result is accurate to the first significant figure for all 20 people on the table -- about 50,000. Which, with our current modeling pipeline takes about 13 seconds to simulate. We can benchmark and profile the code with the package `cProfile` to see where any bottlenecks are occurring.
+
+```{python, eval=FALSE}
+cProfile.run("sim_pure.main(20, 50000)")                                
+         57010889 function calls in 13.012 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   13.012   13.012 <string>:1(<module>)
+  9492906    3.599    0.000    9.336    0.000 random.py:174(randrange)
+  9492906    1.588    0.000   10.924    0.000 random.py:218(randint)
+  9492906    3.851    0.000    5.738    0.000 random.py:224(_randbelow)
+        1    0.010    0.010   13.012   13.012 sim_pure.py:23(main)
+        1    0.000    0.000    0.000    0.000 sim_pure.py:29(<listcomp>)
+    50000    2.078    0.000   13.002    0.000 sim_pure.py:7(simulation)
+        1    0.000    0.000   13.012   13.012 {built-in method builtins.exec}
+  9492906    0.382    0.000    0.382    0.000 {method 'bit_length' of 'int' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+ 18989260    1.504    0.000    1.504    0.000 {method 'getrandbits' of '_random.Random' objects}
+```
+
+It seems over 70% of our processing time is taken by calls to random e.g. do we decide to pass the cranberry left or right. The result is not too surprising as much of computer architecture is currently optimize towards deterministic and vectorize processes through a number of different design decisions. We can try to code for that type of architecture by trying to be smarted about the cache and preallocating the random calls.
+
+## Pure Python + preallocating
+
+Preallocating the random calls is easier than it sounds. For our case, we draw `prealloc_size` number of random draws and only redraw them when we run out. What the optimal size of that cache is going to depend on a large number of variables (CPU, operating system, other work loads, etc.). I just quickly a couple of different scenarios and found that `prealloc_size=10` was optimal which implies that we probabily wont get much lift from doing this.
+
+```{python, eval=FALSE}
+...
+i = 0
+direction = [random.randint(0, 1) * 2 - 1 for _ in range(prealloc_size)]    
+while visited_count != size:
+    try:
+        last_pos = (pos + direction[i]) % size    
+    except IndexError:    
+        i = 0    
+        direction = [random.randint(0, 1) * 2 - 1 for _ in range(prealloc_size)]  
+    i += 1    
+...
+```
+
+Unfortunately, this actually slowed us down a bit. Lets look at numpy.
+
+```{python, eval=FALSE}
+cProfile.run("sim_pure_vec.main(20, 50000, 10)")
+         59152505 function calls in 14.574 seconds
+```
+
+## Numpy
+
+Numpy is my go-to package if I want to do fast array/matrix manipulation in python. The syntax is almost identical to pure python and changing the pure python implementation to numpy is quick. For the most part, we only need to change lists (`[]`) into numpy arrays (`np.array()`), and be a bit more diligent with the typing.
+
+```{python, eval=FALSE}
+def simulation(size: int) -> int:    
+    """Simulate one round of cranberry sauce passing."""    
+    visited = np.zeros(size, dtype=bool)    
+    visited_count = 1    
+    visited[0] = True    
+    pos, last_pos = 0, 0    
+    while visited_count != size:    
+        direction = np.random.randint(2, dtype=int) * 2 - 1    
+        last_pos = (pos + direction) % size    
+        pos = last_pos    
+        if not visited[last_pos]:    
+            visited_count += 1    
+            visited[last_pos] = True    
+    return last_pos
+```
+
+Benchmarking 50000 simulations with `CProfile` leads to **60 second benchmark** which by over 4.5x. That's not good...  The random drawing is slowing down the process, however, there is much more overhead from using numpy which is slowing the whole process down. Lets quickly try to preallocate and see if that speeds up results.
+
+
+```{python, eval=FALSE}
+cProfile.run("sim_numpy.main(20, 50000)")                                                                                                                                                                  
+         113942506 function calls in 60.995 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+...
+  9486875   30.586    0.000   57.066    0.000 {method 'randint' of 'numpy.random.mtrand.RandomState' objects}
+
+```
+
+
+## Numpy + preallocating
+
+Benchmarking 50000 simulations with `CProfile` leads to a **6 second benchmark** which is less than 1/2 the time with just pure python! Numpy + preallocating leads to some startling results if you don't consider what numpy is optimized for. The problem at hand is mostly weighted down by the random process, not by holding or manipulating large arrays. As such, the only large array in our simulation is the preallocated results of the `randint`. 
+
+```{python, eval=FALSE}
+...
+direction = np.random.randint(2, size=1000, dtype=int) * 2 - 1        
+    while visited_count != size:                                               
+        try:                                                                   
+            last_pos = (pos + direction[i]) % size                             
+        except IndexError:                                                     
+            i = 0                                                              
+            direction = np.random.randint(2, size=1000, dtype=int) * 2 - 1     
+            last_pos = (pos + direction[i]) % size                             
+    i += 1                                                                 
+    pos = last_pos                                                         
+...   
+```
+
+
+
+```{python, eval=FALSE}
+cProfile.run("sim_numpy_vec.main(20, 50000, 1000)")                                                                                                                                                        
+         1150006 function calls in 5.922 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    50000    0.019    0.000    0.269    0.000 <__array_function__ internals>:2(prod)
+        1    0.000    0.000    5.922    5.922 <string>:1(<module>)
+    50000    0.023    0.000    0.096    0.000 _dtype.py:319(_name_includes_bit_suffix)
+    50000    0.055    0.000    0.178    0.000 _dtype.py:333(_name_get)
+    50000    0.008    0.000    0.008    0.000 _dtype.py:36(_kind_name)
+    50000    0.004    0.000    0.004    0.000 fromnumeric.py:2838(_prod_dispatcher)
+    50000    0.028    0.000    0.231    0.000 fromnumeric.py:2843(prod)
+    50000    0.056    0.000    0.203    0.000 fromnumeric.py:73(_wrapreduction)
+    50000    0.016    0.000    0.016    0.000 fromnumeric.py:74(<dictcomp>)
+   100000    0.029    0.000    0.041    0.000 numerictypes.py:293(issubclass_)
+    50000    0.029    0.000    0.073    0.000 numerictypes.py:365(issubdtype)
+        1    0.045    0.045    5.922    5.922 sim_numpy_vec.py:30(main)
+        1    0.000    0.000    0.000    0.000 sim_numpy_vec.py:36(<listcomp>)
+    50000    5.041    0.000    5.877    0.000 sim_numpy_vec.py:7(simulation)
+        1    0.000    0.000    5.922    5.922 {built-in method builtins.exec}
+    50000    0.015    0.000    0.015    0.000 {built-in method builtins.getattr}
+   200000    0.019    0.000    0.019    0.000 {built-in method builtins.issubclass}
+    50000    0.015    0.000    0.245    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
+    50001    0.039    0.000    0.039    0.000 {built-in method numpy.zeros}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+    50000    0.014    0.000    0.014    0.000 {method 'format' of 'str' objects}
+    50000    0.004    0.000    0.004    0.000 {method 'items' of 'dict' objects}
+    50000    0.351    0.000    0.797    0.000 {method 'randint' of 'numpy.random.mtrand.RandomState' objects}
+    50000    0.112    0.000    0.112    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+```
+
+So numpy can be potentially faster 2x but we'll need to figure out the optimal preallocated size which is not great. In fact, a poor preallocation will result in speeds much worst than using just poor numpy.
+
+## Numba
+
+Numba is a great python package which mainly translates sections of python code to machine code to speed up the program. Numba can also setup simple concurrent pipelines.
+
+For both of the approaches, the code will use the decorator `@numba.njit(parallel=True)` which attempts to translates the python function into machine code. Numba then uses a JIT (Just-In-Time) compiler to compile and run the code. Numba may require stronger typing than python, although for our code, Numba uses a similar level of typing as Numpy.
+
+### Single core Numba
+
+With good modular coding practices, a programmer can indicate which part of the code ought to be translated to a lower-level language. For our case, the new simulation function is almost identical as before.
+
+```{python, eval=FALSE}
+@njit(parallel=True)
+def simulation(size: int) -> int:
+    """Simulate one round of cranberry sauce passing."""
+    visited = np.zeros(size, dtype=bool_)
+    visited_count = 1
+    visited[0] = True
+    pos, last_pos = 0, 0
+    while not visited_count == size:
+        direction = np.random.randint(2) * 2 - 1
+        last_pos = (pos + direction) % size
+        pos = last_pos
+        if not visited[last_pos]:
+            visited_count += 1
+            visited[last_pos] = True
+    return last_pos
+```
+
+The compiling run is already the fastest run yet at **2 seconds, a 6.5x speedup**! Once the program is run once, subsequent calls are even faster. In this case, the after compiling run is **0.3 seconds, an over 40x speed up**. You can also note that there are much fewer function calls once the program is compiled.
+
+```{python, eval=FALSE}
+cProfile.run("sim_numba.main(20, 50000, 1)")
+         3025357 function calls (2825134 primitive calls) in 1.976 seconds
+
+cProfile.run("sim_numba.main(20, 50000, 1)")
+         4 function calls in 0.315 seconds
+```
+
+### Multicore Numba
+
+We can also leverage simple multicore tasks with Numba. In our case, each simulation is completely independent from one another. In other words, the result of any simulation does not influence the result of another simulation. Using that fact, we can distribute each simulation on different workers to try to make the program run even faster.
+
+```{python, eval=FALSE}
+...
+for i in numba.prange(threads):
+    for _ in range(rounds):
+        count2d[i, simulation(size)] += 1
+count = np.sum(count2d, axis=0)
+...
+```
+
+Unfortunate for us, it seems that there wasn't much difference between the single core vs parallelized simulation. This is most likely that the simulation is too small and so the fixed cost of parallelizing the work is of similar size to the benefit from it.
+
+
+```{python, eval=FALSE}
+cProfile.run("sim_numba.main(20, 5000, 10)")
+         4 function calls in 0.344 seconds
+
+cProfile.run("sim_numba.main(20, 500, 100)")
+         4 function calls in 0.345 seconds
+
+cProfile.run("sim_numba.main(20, 50, 1000)")
+         4 function calls in 0.332 seconds
+```
+
+```{R echo=FALSE, message=FALSE, warning=FALSE, warnings=TRUE}
+knitr::kable(df)
+```
+
+If you want to look at the code, check out [my github at here](https://github.com/badbayesian/personal_website/tree/master/content/post/2020-11-23-passing-along-the-cranberry-sauce)
+
+Edit: [Congratulations to 👏 Daniel Silva-Inclan 👏 of Chicago, Illinois, winner of the most recent Riddler Classic.](https://fivethirtyeight.com/features/can-you-cut-the-cookies)
+
+##
