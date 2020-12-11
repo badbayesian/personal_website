@@ -94,11 +94,11 @@ cProfile.run("sim_pure.main(20, 50000)")
  18989260    1.504    0.000    1.504    0.000 {method 'getrandbits' of '_random.Random' objects}
 ```
 
-It seems over 70% of our processing time is taken by calls to random e.g. do we decide to pass the cranberry left or right. The result is not too surprising as much of computer architecture is currently optimize towards deterministic and vectorize processes through a number of different design decisions. We can try to code for that type of architecture by trying to be smarted about the cache and preallocating the random calls.
+It seems that over 70% of our processing time is taken by calls to random e.g. to which direction do we pass the cranberry sauce. The result is not too surprising as much of computer architecture is currently optimize towards deterministic and vectorize processes through a number of different design decisions. We can try to code for that type of architecture by trying to be smarted about the cache by preallocating the random calls.
 
 ## Pure Python + preallocating
 
-Preallocating the random calls is easier than it sounds. For our case, we draw `prealloc_size` number of random draws and only redraw them when we run out. What the optimal size of that cache is going to depend on a large number of variables (CPU, operating system, other work loads, etc.). I just quickly a couple of different scenarios and found that `prealloc_size=10` was optimal which implies that we probabily wont get much lift from doing this.
+Preallocating the random calls is easier than it sounds. For our case, we draw `prealloc_size` number of random draws and only redraw them when we run out. What the optimal size of that cache is going to depend on a large number of variables (CPU, operating system, other work loads, etc.). I just quickly a couple of different scenarios and found that `prealloc_size=10` was optimal which implies that we probably wont get much lift from doing this.
 
 ```{python, eval=FALSE}
 ...
@@ -142,7 +142,7 @@ def simulation(size: int) -> int:
     return last_pos
 ```
 
-Benchmarking 50000 simulations with `CProfile` leads to **60 second benchmark** which by over 4.5x. That's not good...  The random drawing is slowing down the process, however, there is much more overhead from using numpy which is slowing the whole process down. Lets quickly try to preallocate and see if that speeds up results.
+Benchmarking 50000 simulations with `CProfile` leads to **60 second benchmark** which by over 4.5x slower. That's not good...  The random drawing is slowing down the process, however, there is much more overhead from using numpy which is also slowing the whole process down. Lets quickly try to preallocate and see if that speeds up results.
 
 
 ```{python, eval=FALSE}
@@ -160,7 +160,7 @@ cProfile.run("sim_numpy.main(20, 50000)")
 
 ## Numpy + preallocating
 
-Benchmarking 50000 simulations with `CProfile` leads to a **6 second benchmark** which is less than 1/2 the time with just pure python! Numpy + preallocating leads to some startling results if you don't consider what numpy is optimized for. The problem at hand is mostly weighted down by the random process, not by holding or manipulating large arrays. As such, the only large array in our simulation is the preallocated results of the `randint`. 
+Benchmarking 50000 simulations with `CProfile` leads to a **6 second benchmark** which is less than 1/2 the time with just pure python! Numpy + preallocating leads to some startling results if you don't consider what numpy is optimized for. The problem at hand is mostly weighted down by the random process, not by holding in memory or manipulating large arrays. As such, the only large array in our simulation is the preallocated results of the `randint`. 
 
 ```{python, eval=FALSE}
 ...
@@ -212,13 +212,13 @@ cProfile.run("sim_numpy_vec.main(20, 50000, 1000)")
     50000    0.112    0.000    0.112    0.000 {method 'reduce' of 'numpy.ufunc' objects}
 ```
 
-So numpy can be potentially faster 2x but we'll need to figure out the optimal preallocated size which is not great. In fact, a poor preallocation will result in speeds much worst than using just poor numpy.
+So numpy can be potentially faster 2x but we'll need to figure out the optimal preallocated size which is not great and is too dependent on hardware and specifics of the machine. Even worst, a poor preallocation will result in speeds much worst than using just numpy.
 
 ## Numba
 
 Numba is a great python package which mainly translates sections of python code to machine code to speed up the program. Numba can also setup simple concurrent pipelines.
 
-For both of the approaches, the code will use the decorator `@numba.njit(parallel=True)` which attempts to translates the python function into machine code. Numba then uses a JIT (Just-In-Time) compiler to compile and run the code. Numba may require stronger typing than python, although for our code, Numba uses a similar level of typing as Numpy.
+For both of the approaches, the code will use the decorator `@numba.njit(parallel=True)` which attempts to translates the specific python function into machine code. Numba then uses a JIT (Just-In-Time) compiler to compile and run the python + Numba code. Numba may require stronger typing than python, although for our code, Numba uses a similar level of typing as Numpy.
 
 ### Single core Numba
 
@@ -254,7 +254,7 @@ cProfile.run("sim_numba.main(20, 50000, 1)")
 
 ### Multicore Numba
 
-We can also leverage simple multicore tasks with Numba. In our case, each simulation is completely independent from one another. In other words, the result of any simulation does not influence the result of another simulation. Using that fact, we can distribute each simulation on different workers to try to make the program run even faster.
+We can also leverage simple multicore tasks with Numba. In our case, each simulation is completely independent from one another. In other words, the result of any simulation does not influence the result of another simulation. Using that fact, we can distribute each simulation on different workers to try to make the program run even faster. With any parallelized work, the user needs to weigh the generally fixed time costs of distributing the work with the varied benefits of multiple workers.
 
 ```{python, eval=FALSE}
 ...
@@ -265,7 +265,7 @@ count = np.sum(count2d, axis=0)
 ...
 ```
 
-Unfortunate for us, it seems that there wasn't much difference between the single core vs parallelized simulation. This is most likely that the simulation is too small and so the fixed cost of parallelizing the work is of similar size to the benefit from it.
+Unfortunate for us, it seems that there wasn't much of a difference between the single core vs parallelized simulation. This is most likely that the simulation is too small and so the fixed cost of parallelizing the work is of similar size to the benefit from it.
 
 
 ```{python, eval=FALSE}
@@ -279,12 +279,15 @@ cProfile.run("sim_numba.main(20, 50, 1000)")
          4 function calls in 0.332 seconds
 ```
 
+# Conclution
+
+Numba is great tool if you have nicely modular python code that needs to run faster. While Numpy was not too useful in this simulation, I still use Numpy extensively for programming in Python that needs linear algebra. Pure python is still reasonably fast and its `random` package is still competitive in some situations to Numpy's own version. As always, choose the tools which best fits the job at hand.
+
 ```{R echo=FALSE, message=FALSE, warning=FALSE, warnings=TRUE}
 knitr::kable(df)
 ```
 
 If you want to look at the code, check out [my github at here](https://github.com/badbayesian/personal_website/tree/master/content/post/2020-11-23-passing-along-the-cranberry-sauce)
 
-Edit: [Congratulations to 👏 Daniel Silva-Inclan 👏 of Chicago, Illinois, winner of the most recent Riddler Classic.](https://fivethirtyeight.com/features/can-you-cut-the-cookies)
-
-##
+Edit: Thank you the Riddler classic for choosing my submission as the winner.
+[Congratulations to 👏 Daniel Silva-Inclan 👏 of Chicago, Illinois, winner of the most recent Riddler Classic.](https://fivethirtyeight.com/features/can-you-cut-the-cookies)

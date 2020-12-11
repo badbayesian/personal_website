@@ -99,7 +99,7 @@ overridetime: 6
 <p>As with any simulation study, we need to conduct many simulations. You can look at other posts on why the answer is <span class="math inline">\(\frac{1}{19} \approx 0.05263\)</span>, however, I am more interested in writing about how quickly this approach converges to a reasonable approximation. For example, if we run 1000 rounds of the pure python simulation, the probability of being the last person to receive the cranberry sauce is incorrect on the first significant figure, the tenths place, about ~half of the time.</p>
 <pre class="python"><code>import sim_pure
 sim_pure.main(20, 1000)</code></pre>
-<pre><code>## [0.0, 0.049, 0.052, 0.051, 0.055, 0.044, 0.057, 0.051, 0.047, 0.064, 0.041, 0.072, 0.047, 0.066, 0.039, 0.048, 0.055, 0.057, 0.047, 0.058]</code></pre>
+<pre><code>## [0.0, 0.054, 0.058, 0.041, 0.066, 0.054, 0.067, 0.055, 0.046, 0.054, 0.051, 0.047, 0.053, 0.057, 0.053, 0.047, 0.051, 0.047, 0.046, 0.053]</code></pre>
 <p>While this example has some nice structure such that assuming equal probability of all outcomes is intuitive, other more complicated probability models don’t have that luxury. So, how many rounds of simulation do we need to run so that the result is accurate to the first significant figure for all 20 people on the table – about 50,000. Which, with our current modeling pipeline takes about 13 seconds to simulate. We can benchmark and profile the code with the package <code>cProfile</code> to see where any bottlenecks are occurring.</p>
 <pre class="python"><code>cProfile.run(&quot;sim_pure.main(20, 50000)&quot;)                                
          57010889 function calls in 13.012 seconds
@@ -118,11 +118,11 @@ sim_pure.main(20, 1000)</code></pre>
   9492906    0.382    0.000    0.382    0.000 {method &#39;bit_length&#39; of &#39;int&#39; objects}
         1    0.000    0.000    0.000    0.000 {method &#39;disable&#39; of &#39;_lsprof.Profiler&#39; objects}
  18989260    1.504    0.000    1.504    0.000 {method &#39;getrandbits&#39; of &#39;_random.Random&#39; objects}</code></pre>
-<p>It seems over 70% of our processing time is taken by calls to random e.g. do we decide to pass the cranberry left or right. The result is not too surprising as much of computer architecture is currently optimize towards deterministic and vectorize processes through a number of different design decisions. We can try to code for that type of architecture by trying to be smarted about the cache and preallocating the random calls.</p>
+<p>It seems that over 70% of our processing time is taken by calls to random e.g. to which direction do we pass the cranberry sauce. The result is not too surprising as much of computer architecture is currently optimize towards deterministic and vectorize processes through a number of different design decisions. We can try to code for that type of architecture by trying to be smarted about the cache by preallocating the random calls.</p>
 </div>
 <div id="pure-python-preallocating" class="section level2">
 <h2>Pure Python + preallocating</h2>
-<p>Preallocating the random calls is easier than it sounds. For our case, we draw <code>prealloc_size</code> number of random draws and only redraw them when we run out. What the optimal size of that cache is going to depend on a large number of variables (CPU, operating system, other work loads, etc.). I just quickly a couple of different scenarios and found that <code>prealloc_size=10</code> was optimal which implies that we probabily wont get much lift from doing this.</p>
+<p>Preallocating the random calls is easier than it sounds. For our case, we draw <code>prealloc_size</code> number of random draws and only redraw them when we run out. What the optimal size of that cache is going to depend on a large number of variables (CPU, operating system, other work loads, etc.). I just quickly a couple of different scenarios and found that <code>prealloc_size=10</code> was optimal which implies that we probably wont get much lift from doing this.</p>
 <pre class="python"><code>...
 i = 0
 direction = [random.randint(0, 1) * 2 - 1 for _ in range(prealloc_size)]    
@@ -155,7 +155,7 @@ while visited_count != size:
             visited_count += 1    
             visited[last_pos] = True    
     return last_pos</code></pre>
-<p>Benchmarking 50000 simulations with <code>CProfile</code> leads to <strong>60 second benchmark</strong> which by over 4.5x. That’s not good… The random drawing is slowing down the process, however, there is much more overhead from using numpy which is slowing the whole process down. Lets quickly try to preallocate and see if that speeds up results.</p>
+<p>Benchmarking 50000 simulations with <code>CProfile</code> leads to <strong>60 second benchmark</strong> which by over 4.5x slower. That’s not good… The random drawing is slowing down the process, however, there is much more overhead from using numpy which is also slowing the whole process down. Lets quickly try to preallocate and see if that speeds up results.</p>
 <pre class="python"><code>cProfile.run(&quot;sim_numpy.main(20, 50000)&quot;)                                                                                                                                                                  
          113942506 function calls in 60.995 seconds
 
@@ -167,7 +167,7 @@ while visited_count != size:
 </div>
 <div id="numpy-preallocating" class="section level2">
 <h2>Numpy + preallocating</h2>
-<p>Benchmarking 50000 simulations with <code>CProfile</code> leads to a <strong>6 second benchmark</strong> which is less than 1/2 the time with just pure python! Numpy + preallocating leads to some startling results if you don’t consider what numpy is optimized for. The problem at hand is mostly weighted down by the random process, not by holding or manipulating large arrays. As such, the only large array in our simulation is the preallocated results of the <code>randint</code>.</p>
+<p>Benchmarking 50000 simulations with <code>CProfile</code> leads to a <strong>6 second benchmark</strong> which is less than 1/2 the time with just pure python! Numpy + preallocating leads to some startling results if you don’t consider what numpy is optimized for. The problem at hand is mostly weighted down by the random process, not by holding in memory or manipulating large arrays. As such, the only large array in our simulation is the preallocated results of the <code>randint</code>.</p>
 <pre class="python"><code>...
 direction = np.random.randint(2, size=1000, dtype=int) * 2 - 1        
     while visited_count != size:                                               
@@ -210,12 +210,12 @@ direction = np.random.randint(2, size=1000, dtype=int) * 2 - 1
     50000    0.004    0.000    0.004    0.000 {method &#39;items&#39; of &#39;dict&#39; objects}
     50000    0.351    0.000    0.797    0.000 {method &#39;randint&#39; of &#39;numpy.random.mtrand.RandomState&#39; objects}
     50000    0.112    0.000    0.112    0.000 {method &#39;reduce&#39; of &#39;numpy.ufunc&#39; objects}</code></pre>
-<p>So numpy can be potentially faster 2x but we’ll need to figure out the optimal preallocated size which is not great. In fact, a poor preallocation will result in speeds much worst than using just poor numpy.</p>
+<p>So numpy can be potentially faster 2x but we’ll need to figure out the optimal preallocated size which is not great and is too dependent on hardware and specifics of the machine. Even worst, a poor preallocation will result in speeds much worst than using just numpy.</p>
 </div>
 <div id="numba" class="section level2">
 <h2>Numba</h2>
 <p>Numba is a great python package which mainly translates sections of python code to machine code to speed up the program. Numba can also setup simple concurrent pipelines.</p>
-<p>For both of the approaches, the code will use the decorator <code>@numba.njit(parallel=True)</code> which attempts to translates the python function into machine code. Numba then uses a JIT (Just-In-Time) compiler to compile and run the code. Numba may require stronger typing than python, although for our code, Numba uses a similar level of typing as Numpy.</p>
+<p>For both of the approaches, the code will use the decorator <code>@numba.njit(parallel=True)</code> which attempts to translates the specific python function into machine code. Numba then uses a JIT (Just-In-Time) compiler to compile and run the python + Numba code. Numba may require stronger typing than python, although for our code, Numba uses a similar level of typing as Numpy.</p>
 <div id="single-core-numba" class="section level3">
 <h3>Single core Numba</h3>
 <p>With good modular coding practices, a programmer can indicate which part of the code ought to be translated to a lower-level language. For our case, the new simulation function is almost identical as before.</p>
@@ -243,14 +243,14 @@ cProfile.run(&quot;sim_numba.main(20, 50000, 1)&quot;)
 </div>
 <div id="multicore-numba" class="section level3">
 <h3>Multicore Numba</h3>
-<p>We can also leverage simple multicore tasks with Numba. In our case, each simulation is completely independent from one another. In other words, the result of any simulation does not influence the result of another simulation. Using that fact, we can distribute each simulation on different workers to try to make the program run even faster.</p>
+<p>We can also leverage simple multicore tasks with Numba. In our case, each simulation is completely independent from one another. In other words, the result of any simulation does not influence the result of another simulation. Using that fact, we can distribute each simulation on different workers to try to make the program run even faster. With any parallelized work, the user needs to weigh the generally fixed time costs of distributing the work with the varied benefits of multiple workers.</p>
 <pre class="python"><code>...
 for i in numba.prange(threads):
     for _ in range(rounds):
         count2d[i, simulation(size)] += 1
 count = np.sum(count2d, axis=0)
 ...</code></pre>
-<p>Unfortunate for us, it seems that there wasn’t much difference between the single core vs parallelized simulation. This is most likely that the simulation is too small and so the fixed cost of parallelizing the work is of similar size to the benefit from it.</p>
+<p>Unfortunate for us, it seems that there wasn’t much of a difference between the single core vs parallelized simulation. This is most likely that the simulation is too small and so the fixed cost of parallelizing the work is of similar size to the benefit from it.</p>
 <pre class="python"><code>cProfile.run(&quot;sim_numba.main(20, 5000, 10)&quot;)
          4 function calls in 0.344 seconds
 
@@ -259,6 +259,12 @@ cProfile.run(&quot;sim_numba.main(20, 500, 100)&quot;)
 
 cProfile.run(&quot;sim_numba.main(20, 50, 1000)&quot;)
          4 function calls in 0.332 seconds</code></pre>
+</div>
+</div>
+</div>
+<div id="conclution" class="section level1">
+<h1>Conclution</h1>
+<p>Numba is great tool if you have nicely modular python code that needs to run faster. While Numpy was not too useful in this simulation, I still use Numpy extensively for programming in Python that needs linear algebra. Pure python is still reasonably fast and its <code>random</code> package is still competitive in some situations to Numpy’s own version. As always, choose the tools which best fits the job at hand.</p>
 <table>
 <thead>
 <tr class="header">
@@ -306,10 +312,6 @@ cProfile.run(&quot;sim_numba.main(20, 50, 1000)&quot;)
 </tbody>
 </table>
 <p>If you want to look at the code, check out <a href="https://github.com/badbayesian/personal_website/tree/master/content/post/2020-11-23-passing-along-the-cranberry-sauce">my github at here</a></p>
-<p>Edit: <a href="https://fivethirtyeight.com/features/can-you-cut-the-cookies">Congratulations to 👏 Daniel Silva-Inclan 👏 of Chicago, Illinois, winner of the most recent Riddler Classic.</a></p>
-</div>
-</div>
-<div id="section" class="section level2">
-<h2></h2>
-</div>
+<p>Edit: Thank you the Riddler classic for choosing my submission as the winner.
+<a href="https://fivethirtyeight.com/features/can-you-cut-the-cookies">Congratulations to 👏 Daniel Silva-Inclan 👏 of Chicago, Illinois, winner of the most recent Riddler Classic.</a></p>
 </div>
