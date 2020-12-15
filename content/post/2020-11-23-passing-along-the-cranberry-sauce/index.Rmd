@@ -7,7 +7,7 @@ categories:
   - python
   - The Riddler
 summary: 'Speeding up your program by over 40x with little cost'
-subtitle: 'Speeding up your program can be difficult and sometimes a worth wild endeavor'
+subtitle: 'Speeding up your program can be difficult and sometimes a worthwhile endeavor'
 lastmod: '2020-11-23T20:50:55-06:00'
 featured: no
 image:
@@ -279,7 +279,7 @@ cProfile.run("sim_numba.main(20, 50, 1000)")
          4 function calls in 0.332 seconds
 ```
 
-# Conclution
+# Conclusion
 
 Numba is great tool if you have nicely modular python code that needs to run faster. While Numpy was not too useful in this simulation, I still use Numpy extensively for programming in Python that needs linear algebra. Pure python is still reasonably fast and its `random` package is still competitive in some situations to Numpy's own version. As always, choose the tools which best fits the job at hand.
 

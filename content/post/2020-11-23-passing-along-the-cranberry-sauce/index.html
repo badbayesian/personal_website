@@ -7,7 +7,7 @@ categories:
   - python
   - The Riddler
 summary: 'Speeding up your program by over 40x with little cost'
-subtitle: 'Speeding up your program can be difficult and sometimes a worth wild endeavor'
+subtitle: 'Speeding up your program can be difficult and sometimes a worthwhile endeavor'
 lastmod: '2020-11-23T20:50:55-06:00'
 featured: no
 image:
@@ -99,7 +99,7 @@ overridetime: 6
 <p>As with any simulation study, we need to conduct many simulations. You can look at other posts on why the answer is <span class="math inline">\(\frac{1}{19} \approx 0.05263\)</span>, however, I am more interested in writing about how quickly this approach converges to a reasonable approximation. For example, if we run 1000 rounds of the pure python simulation, the probability of being the last person to receive the cranberry sauce is incorrect on the first significant figure, the tenths place, about ~half of the time.</p>
 <pre class="python"><code>import sim_pure
 sim_pure.main(20, 1000)</code></pre>
-<pre><code>## [0.0, 0.054, 0.058, 0.041, 0.066, 0.054, 0.067, 0.055, 0.046, 0.054, 0.051, 0.047, 0.053, 0.057, 0.053, 0.047, 0.051, 0.047, 0.046, 0.053]</code></pre>
+<pre><code>## [0.0, 0.049, 0.057, 0.051, 0.05, 0.04, 0.054, 0.067, 0.056, 0.059, 0.048, 0.057, 0.054, 0.043, 0.055, 0.05, 0.056, 0.053, 0.055, 0.046]</code></pre>
 <p>While this example has some nice structure such that assuming equal probability of all outcomes is intuitive, other more complicated probability models don’t have that luxury. So, how many rounds of simulation do we need to run so that the result is accurate to the first significant figure for all 20 people on the table – about 50,000. Which, with our current modeling pipeline takes about 13 seconds to simulate. We can benchmark and profile the code with the package <code>cProfile</code> to see where any bottlenecks are occurring.</p>
 <pre class="python"><code>cProfile.run(&quot;sim_pure.main(20, 50000)&quot;)                                
          57010889 function calls in 13.012 seconds
@@ -262,8 +262,8 @@ cProfile.run(&quot;sim_numba.main(20, 50, 1000)&quot;)
 </div>
 </div>
 </div>
-<div id="conclution" class="section level1">
-<h1>Conclution</h1>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
 <p>Numba is great tool if you have nicely modular python code that needs to run faster. While Numpy was not too useful in this simulation, I still use Numpy extensively for programming in Python that needs linear algebra. Pure python is still reasonably fast and its <code>random</code> package is still competitive in some situations to Numpy’s own version. As always, choose the tools which best fits the job at hand.</p>
 <table>
 <thead>
