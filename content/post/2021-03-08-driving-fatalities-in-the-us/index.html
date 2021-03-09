@@ -1,0 +1,590 @@
+---
+title: "Driving Fatalities in US"
+author: "badbayesian"
+date: '2021-03-08'
+categories:
+- R
+- theory
+lastmod: '2021-03-08T14:04:31-06:00'
+summary: 'The data is from National Highway Traffic Safety Administration (NHTSA). You can download the data from their website and clean it for this analysis using the following script.'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+math: yes
+overridetime: 10
+---
+
+
+
+<p>This week I will explore data traffic fatalities in several US cities, and analyze the differences in the data.</p>
+<div id="exploring-the-data" class="section level1">
+<h1>Exploring the data</h1>
+<p>The data was obtained from the National Highway Traffic Safety Administration (NHTSA). You can download the data from their website and it clean for this analysis using the following script.</p>
+<pre class="r"><code>library(data.table)
+library(glue)
+library(httr)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+library(broom)
+library(forcats)
+library(tidyr)
+library(hrbrthemes)
+library(stringdist)
+library(ggsci)
+library(ggpubr)
+library(stringr)
+library(latex2exp)
+library(tibble)
+library(tidymodels)
+library(latex2exp)
+library(CircStats)
+library(cowplot)
+
+base_url &lt;- &quot;https://www.nhtsa.gov/filebrowser/download/&quot;
+download_links &lt;- c(280571, 176791, 118801, 122001, 122041)
+n &lt;- length(download_links)
+
+download_data &lt;- function(base_url, ext, year) {
+  dir.create(glue(&quot;data/{year}&quot;), recursive = TRUE)
+  url &lt;- glue(&quot;{base_url}{ext}&quot;)
+  GET(url, write_disk(
+    data_cleaning &lt;- tempfile(fileext = &quot;.zip&quot;, tmpdir = &quot;data&quot;)))
+  unzip(data_cleaning, exdir = glue(&quot;data/{year}&quot;))
+  unlink(data_cleaning)
+}
+
+#lapply(1:n, function(i) {
+#  ext &lt;- download_links[i]
+#  year &lt;- 2020 - i
+#  download_data(base_url, ext, year)
+#})
+
+# Population numbers
+detroit &lt;- c(3648000, 3632000, 3616000, 3600000, 3571000)
+nyc &lt;- c(18648000, 18705000, 18762000, 18819000, 18805000)
+chicago &lt;- c(9552550, 9533660, 9514110, 9484160,    9458540)
+boston &lt;- c(670491, 679848, 687788, 691147, 692600)
+san_francisco &lt;- c(863010, 871512, 878040, 880696, 881549)
+austin &lt;- c(921114, 939447, 951553, 962469, 978908)
+pop &lt;- c(detroit, nyc, chicago, boston, austin)
+
+population &lt;- data.frame(pop = pop,
+                         year = rep(2015:2019, 5),
+                         city = rep(c(&quot;Detroit&quot;, &quot;NYC&quot;, &quot;Chicago&quot;, &quot;Boston&quot;,
+                                      &quot;Austin&quot;), each = 5))
+
+read_file &lt;- function(year, file) {
+  files &lt;- list.files(glue(&quot;data/{year}&quot;))
+  file_name &lt;- files[agrep(file, files, ignore.case = TRUE)]
+  
+  glue(&quot;data/{year}/{file_name}&quot;) %&gt;%
+    fread()
+}
+
+merge_files &lt;- function(years, file) {
+  lapply(years, function(year) read_file(year, file)) %&gt;%
+    rbindlist(fill=TRUE, use.names=TRUE)
+}
+
+cities &lt;- c(1260, 4170, 1670, 0120, 3290, 0330)
+years &lt;- 2015:2019
+files &lt;- c(&quot;accident&quot;, &quot;person&quot;)
+
+df &lt;- sapply(files, function(file) merge_files(years, file))
+
+accident &lt;- df$accident %&gt;%
+  filter(CITY %in% cities) %&gt;%
+  mutate(CITY = case_when(CITY == 4170 ~ &quot;NYC&quot;,
+                          CITY == 1260 ~ &quot;Detroit&quot;,
+                          CITY == 1670 ~ &quot;Chicago&quot;,
+                          CITY == 0120 ~ &quot;Boston&quot;,
+                          CITY == 3290 ~ &quot;SF&quot;,
+                          CITY == 0330 ~ &quot;Austin&quot;
+  ),
+  date = ymd(glue(&quot;{YEAR}-{MONTH}-{DAY}&quot;)),
+  HOUR = ifelse(HOUR &gt; 23, NA, HOUR),
+  MINUTE = ifelse(MINUTE &gt; 59, NA, MINUTE),
+  ARR_HOUR = ifelse(ARR_HOUR &gt; 23, NA, ARR_HOUR),
+  ARR_MIN = ifelse(ARR_MIN &gt; 59, NA, ARR_MIN),
+  NOT_HOUR = ifelse(NOT_HOUR &gt; 23, NA, ARR_HOUR),
+  NOT_MIN = ifelse(NOT_MIN &gt; 59, NA, ARR_MIN),
+  HOSP_HOUR = ifelse(NOT_HOUR &gt; 23, NA, ARR_HOUR),
+  HOSP_MIN = ifelse(NOT_MIN &gt; 59, NA, ARR_MIN),
+  time = as_datetime(ymd_hm(glue(&quot;{YEAR}-{MONTH}-{DAY} {HOUR}:{MINUTE}&quot;))),
+  arr_time = as_datetime(ymd_hm(glue(&quot;{YEAR}-{MONTH}-{DAY}&quot;,
+                                     &quot; {ARR_HOUR}:{ARR_MIN}&quot;))),
+  not_time = as_datetime(ymd_hm(glue(&quot;{YEAR}-{MONTH}-{DAY}&quot;,
+                                     &quot; {NOT_HOUR}:{NOT_MIN}&quot;))),
+  hops_time = as_datetime(ymd_hm(glue(&quot;{YEAR}-{MONTH}-{DAY}&quot;,
+                                      &quot; {HOSP_HOUR}:{HOSP_MIN}&quot;))),
+  response_time = ifelse(is.na(hops_time) | is.na(time), NA_Date_,
+                         (hops_time - time) / 60),
+  MAN_COLL = case_when(
+    MAN_COLL == 0 ~ &quot;Non Motor Vehicle&quot;,
+    MAN_COLL == 1 ~ &quot;Front-to-Rear&quot;,
+    MAN_COLL == 2 ~ &quot;Head-On&quot;,
+    MAN_COLL %in% 3:6 ~ &quot;Angle&quot;,
+    MAN_COLL %in% 7:8 ~ &quot;Sideswipe&quot;,
+    MAN_COLL %in% 9:10 ~ &quot;Rear&quot;,
+    TRUE ~ &quot;Unknown&quot;)) %&gt;%
+  full_join(population, by = c(&quot;CITY&quot; = &quot;city&quot;, &quot;YEAR&quot; = &quot;year&quot;)) %&gt;%
+  filter(CITY != &quot;SF&quot;)</code></pre>
+<div id="discrepancies-in-traffic-fatalities" class="section level2">
+<h2>Discrepancies in Traffic Fatalities</h2>
+<p>Figure 1 below shows that even when we control for population size, Austin and Boston have several multiples more (4x - 7x) in traffic fatalities in comparison to other comparable cities.</p>
+<pre class="r"><code>accident %&gt;%
+  group_by(CITY, YEAR) %&gt;%
+  summarise(total_deaths = sum(FATALS), pop = first(pop), .groups = &quot;drop&quot;) %&gt;%
+  mutate(total_deaths = 1e6*total_deaths/pop) %&gt;%
+  ggplot() +
+  aes(x = YEAR, y = total_deaths, color = CITY) +
+  expand_limits(y = 0) +
+  geom_point(size=3) +
+  geom_line(size=1.5) +
+  theme_bw() +
+  labs(title = &quot;Traffic Fatalities per Million by City over Time&quot;,
+       y = &quot;Traffic Fatalities per Million&quot;,
+       x = &quot;Year&quot;,
+       caption = &quot;Figure 1: Data from NHTSA (2015-2019) accidents&quot;,
+       color = &quot;City&quot;) +
+  theme_classic() +
+  theme(plot.title = element_text(size=16)) +
+  grids(linetype = &quot;dashed&quot;) +
+  scale_color_uchicago()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/traffic_fatalities-1.png" width="672" /></p>
+<p>Looking at the data more closely, we find evidence that Austin and Boston’s higher traffic fatalities seem to be driven by increases in Non-Motor Vehicles and [at an] Angle accidents in comparison to those of other cities.</p>
+<pre class="r"><code>collisions &lt;- accident %&gt;%
+  group_by(CITY, YEAR, MAN_COLL) %&gt;%
+  summarise(fatalities = n(), pop = first(pop), .groups = &quot;drop&quot;) %&gt;%
+  filter(MAN_COLL != &quot;Unknown&quot;) %&gt;%
+  mutate(fatalities = 1e6*fatalities/pop,
+         MAN_COLL = relevel(factor(MAN_COLL), ref = &quot;Head-On&quot;),
+         CITY = relevel(factor(CITY), ref = &quot;Detroit&quot;)) %&gt;%
+  group_by(MAN_COLL) %&gt;%
+  arrange(desc(CITY)) %&gt;%
+  summarise(model = list(glm(fatalities ~ CITY + YEAR)),
+            fatalities, YEAR, MAN_COLL, CITY, .groups = &quot;drop&quot;) %&gt;%
+  mutate(tidied = map(model, tidy, conf.int = TRUE)) %&gt;%
+  unnest(tidied) %&gt;%
+  mutate(p.value = format.pval(round(p.value, 2)))
+
+collisions %&gt;%
+  dplyr::select(YEAR, MAN_COLL, CITY, fatalities) %&gt;%
+  distinct() %&gt;%
+  ggplot() +
+  aes(x = YEAR, y = fatalities, color = MAN_COLL) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(.~CITY) +
+  expand_limits(y = 0) +
+  labs(title = str_wrap(paste(&quot;Traffic Fatalities per Million by Collision&quot;,
+                              &quot;Type per City over Time&quot;), 70),
+       y = &quot;Traffic Fatalities per Million&quot;,
+       x = &quot;Year&quot;,
+       caption = &quot;Fig 2: Data from NHTSA (2015-2019) accidents&quot;,
+       color = &quot;Collision Type&quot;) +
+  theme_classic() +
+  theme(plot.title = element_text(size=15)) +
+  grids(linetype = &quot;dashed&quot;) +
+  scale_color_uchicago() +
+  theme(axis.text.x = element_text(size = 6),
+        legend.position = &quot;bottom&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/collision_types-1.png" width="672" /></p>
+<p>Figure 3 shows that the intuition from figure 2 is both statistically significant as well as significant from a public health perspective. Non-Motor Vehicle deaths account for an increase of 60 more traffic fatalities per million each year on average, above the already-high rate of at an head-on traffic fatalities in Detroit. More explicitly, on average, 44 more Bostonians and 55 more Austinites die from Non-Motor Vehicle accidents in comparison to those of a similar city such as Detroit according to this model.</p>
+<pre class="r"><code>collisions %&gt;%
+  filter(!term %in% c(&quot;(Intercept)&quot;, &quot;YEAR&quot;)) %&gt;%
+  mutate(MAN_COLL = fct_reorder(MAN_COLL, estimate, .desc = FALSE),
+         term = case_when(term == &quot;CITYBoston&quot; ~ &quot;Boston&quot;,
+                          term == &quot;CITYChicago&quot; ~ &quot;Chicago&quot;,
+                          term == &quot;CITYDetroit&quot; ~ &quot;Detroit&quot;,
+                          term == &quot;CITYNYC&quot; ~ &quot;NYC&quot;,
+                          term == &quot;CITYSF&quot; ~ &quot;SF&quot;,
+                          term == &quot;CITYAustin&quot; ~ &quot;Austin&quot;)) %&gt;%
+  ggplot() +
+  aes(x = estimate, y = MAN_COLL) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = 0, lty = 2, color = &quot;red&quot;) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high),
+                 height = .1, size = 1) +
+  facet_grid(.~term) +
+  labs(title = str_wrap(paste(&quot;How do other Cities&#39; Traffic Fatalities per million by Type&quot;,
+                              &quot;of Collisions compare to Detroit&#39;s&quot;,
+                              &quot;Head-On Collisions?&quot;), 60),
+       subtitle = TeX(paste(&quot;$\ accidents_t \\sim year_t + city_t$ where t is&quot;,
+                            &quot;the type of accident&quot;)),
+       x = &quot;Estimate&quot;,
+       y = &quot;Type of Collision&quot;,
+       caption = &quot;Fig 3: Data from NHTSA (2015-2019) accidents&quot;) +
+  theme_classic() +
+  theme(plot.title = element_text(size=16)) +
+  grids(linetype = &quot;dashed&quot;) +
+  scale_color_uchicago()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/collision_types_reg-1.png" width="672" /></p>
+</div>
+</div>
+<div id="what-external-factors-may-be-driving-traffic-fatalities" class="section level1">
+<h1>What external factors may be driving traffic fatalities?</h1>
+<p>Some auxiliary hypotheses driving the increased traffic fatalities per million between cities may include:</p>
+<ul>
+<li>Slower response time from accident to hospital</li>
+<li>Poorer visibility at night</li>
+<li>Higher cases of drunk driving</li>
+</ul>
+<p>Lets start with the response time from accident to hospital.</p>
+<div id="time-to-hospital" class="section level2">
+<h2>Time to Hospital</h2>
+<p>Austin and Boston have similar response time distribution to other cities. In short, there is no evidence that slower response time is driving traffic fatalities.</p>
+<pre class="r"><code>accident %&gt;%
+  filter(response_time &gt;= 0) %&gt;%
+  group_by(CITY) %&gt;%
+  summarise(mean_res = mean(response_time),
+            response_time = response_time, .groups = &quot;drop&quot;) %&gt;%
+  ggplot() +
+  aes(x = response_time, y = fct_reorder(CITY, desc(mean_res)), fill = CITY) +
+  geom_boxplot(outlier.shape = NA, show.legend = FALSE) +
+  scale_x_continuous(breaks = c(1, 5, 10, 15, 30, 60, 90), limits = c(1, 30)) +
+  labs(title = &quot;Hospital reponse time and delivery of fatalities by City&quot;,
+       subtitle = &quot;Excluding outliers&quot;,
+       y = &quot;City&quot;,
+       x = &quot;Minutes&quot;,
+       color = &quot;&quot;,
+       caption = &quot;Fig 4: Data from NHTSA (2015-2019) accidents&quot;) +
+  theme_classic() +
+  theme(plot.title = element_text(size=16)) +
+  grids(linetype = &quot;dashed&quot;) +
+  scale_fill_uchicago()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+</div>
+<div id="disentangling-poor-visibility-vs-drunk-driving" class="section level2">
+<h2>Disentangling poor visibility vs drunk driving</h2>
+<p>The next couple of auxiliary hypotheses are difficult to disentangle as many traffic fatalities caused by poor visibility and/or drunk driving happen at night. In fact, 37% of traffic fatalities that happen between 10:00pm - 4:59am included a drunk driver in the dataset, while only 12% of traffic fatalities during 5:00am to 9:59pm included a drunk driver.</p>
+<pre class="r"><code>accident %&gt;%
+  mutate(drunk = DRUNK_DR&gt;0,
+         night = (HOUR&gt;=17 | HOUR &lt;= 5)) %&gt;%
+  group_by(CITY, YEAR, drunk, night) %&gt;%
+  summarise(fatalities = n(), .groups = &quot;drop&quot;) %&gt;%
+  left_join(population, by=c(&quot;CITY&quot;=&quot;city&quot;, &quot;YEAR&quot;=&quot;year&quot;)) %&gt;%
+  mutate(fatalities = 1e6*fatalities/pop,
+         drunk = ifelse(drunk, &quot;Drunk&quot;, &quot;Sober&quot;),
+         night = ifelse(night, &quot;Night&quot;, &quot;Day&quot;)) %&gt;%
+  na.omit() %&gt;%
+  ggplot() +
+  aes(x = YEAR, y = fatalities, color = CITY) +
+  geom_point() +
+  geom_line() +
+  labs(x = &quot;Year&quot;,
+       y = &quot;Traffic Fatalities per Million&quot;,
+       title = &quot;Traffic Fatalities per Million per City Day/Night vs Sober/Drunk&quot;,
+       subtitle = &quot;Day/Night is 5am - 5pm&quot;,
+       caption = &quot;Fig 5: Data from NHTSA accidents&quot;,
+       color = &quot;City&quot;) +
+  theme_classic() +
+  theme(plot.title = element_text(size=13)) +
+  grids(linetype = &quot;dashed&quot;) +
+  scale_color_uchicago() +
+  facet_grid(drunk~night)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p>The plot above indicates that Austin and Boston’s increased fatalities per million appear to be driven more by sober and night-time fatalities than day-time or drunk fatalities. This is an imbalance problem as the rate of sober crashes is likely to be much higher than the rate of drunk crashes. Given this data limitation, we can look at the distribution of rates of day/night and drunk/sober traffic fatalities within each city.</p>
+<pre class="r"><code>accident %&gt;%
+  mutate(drunk = DRUNK_DR&gt;0,
+         night = (HOUR&gt;=17 | HOUR &lt;= 5)) %&gt;%
+  na.omit() %&gt;%
+  group_by(CITY, drunk, night) %&gt;%
+  summarise(fatalities = n(), .groups = &quot;drop&quot;) %&gt;%
+  group_by(CITY) %&gt;%
+  summarise(fatalities = fatalities/sum(fatalities),
+            drunk = drunk,
+            night = night,
+            .groups = &quot;drop&quot;) %&gt;%
+  mutate(drunk = ifelse(drunk, &quot;Drunk&quot;, &quot;Sober&quot;),
+         night = ifelse(night, &quot;Night&quot;, &quot;Day&quot;)) %&gt;%
+  complete(drunk, CITY, night, fill = list(fatalities = 0)) %&gt;%
+  ggplot() +
+  aes(y = fatalities, x = interaction(night, drunk, sep = &quot; &amp; &quot;), fill = CITY) +
+  geom_col(position = &quot;dodge&quot;) +
+  labs(x = &quot;&quot;,
+       y = &quot;&quot;,
+       title = &quot;Traffic Fatalities Histogram of Day/Night and Sober/Drunk per City&quot;,
+       subtitle = &quot;5 Year Average; Day/Night is 5am - 5pm&quot;,
+       caption = &quot;Fig 6: Data from NHTSA accidents&quot;,
+       fill = &quot;City&quot;) +
+  theme_classic() +
+  theme(plot.title = element_text(size=13)) +
+  grids(linetype = &quot;dashed&quot;) +
+  scale_fill_uchicago() +
+  scale_y_continuous(labels = scales::percent_format(1)) +
+  facet_grid(.~CITY) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" />
+As shown in fig 6, Sober traffic fatalities account for 70% - 85% of all traffic fatalities in each city. It worth noting that NYC’s night-time and drunk traffic fatalities are less than 10% of their total traffic fatalities where in other cities, that proportion varies from 15% - 25%. There is not much differentiating Austin and Boston from the other cities other than their rates of sober traffic fatalities are equality distributed between day-time and night-time. Other cities have a 5% - 10% spread between day-time and night-time fatalities conditional on that the fatality had no drunk drivers.</p>
+<p>To continue exploring the relationship between day/night and drunk/sober traffic fatalities in each city, we’ll first need to look at the hourly traffic fatalities per million by city. We can build this analysis by counting the number of traffic fatalities in each city by the hour throughout each year, divide by population per million to get a rate, and then average across the different years in each city.</p>
+<pre class="r"><code>hour_analysis &lt;- function(df) {
+  df %&gt;%
+    group_by(CITY, HOUR, YEAR) %&gt;%
+    summarise(fatalities = sum(FATALS),
+              .groups = &quot;drop&quot;) %&gt;%
+    complete(HOUR, YEAR, CITY, fill = list(fatalities = 0)) %&gt;%
+    left_join(population, by=c(&quot;CITY&quot;=&quot;city&quot;, &quot;YEAR&quot;=&quot;year&quot;)) %&gt;%
+    mutate(fatalities = 1e6*fatalities/pop)
+}
+
+hourly_accidents &lt;- hour_analysis(accident) %&gt;%
+  group_by(CITY, HOUR) %&gt;%
+  summarise(fatalities = mean(fatalities), .groups=&quot;drop&quot;)
+
+max_fatals &lt;- max(hourly_accidents$fatalities) +
+  sd(hourly_accidents$fatalities)/3
+
+hourly_accidents %&gt;%
+  ggplot() +
+  aes(x = HOUR, y = fatalities, color = CITY) +
+  geom_line() +
+  theme_classic() +
+  scale_color_uchicago() +
+  scale_x_continuous(breaks = seq(0, 23.1, 3)) +
+  labs(x = &quot;Hour&quot;,
+       y = &quot;Traffic Fatalities per Million&quot;,
+       title = paste(&quot;Yearly Traffic Fatalities per Million By City&quot;,
+                     &quot;per Hour&quot;),
+       subtitle = &quot;With shaded Rush Hours and cyclical trend&quot;,
+       caption = &quot;Fig 7: Data from (2015-2019) accidents&quot;) +
+  geom_smooth(se = FALSE, method = &quot;glm&quot;, linetype = &quot;dashed&quot;,
+              formula = y ~ sin(2*pi*x/24) + cos(2*pi*x/24)) +
+  annotate(&quot;rect&quot;, xmin = 6, xmax = 10, ymin = 0, ymax = max_fatals, alpha = .2) +
+  annotate(&quot;rect&quot;, xmin = 16, xmax = 20, ymin = 0, ymax = max_fatals, alpha = .2) +
+  grids(linetype = &quot;dashed&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/houly_traffic_fatalities-1.png" width="672" /></p>
+<p>The data suggests a seasonal hourly trend with a peak in the evening/night for most cities. This would suggest that any sort of rush hour effect is superseded by a visibility or night life effect. Ignoring the seasonal hourly trend, Austin and Boston have an order of magnitude higher traffic fatalities per million. Additionally, Austin and Boston have a much higher difference in traffic fatalities per million between night and day than other cities. That is, night-time driving in Austin and Boston (as compared to day-time driving) corresponds to a much higher number of fatalities than for other cities. Even if Austin and Boston managed to reduce the incidence of their night traffic fatalities to the level of their day traffic fatalities, they would still be an order of magnitude above the peaks of Detroit, Chicago, or NYC. Austin and Boston have the worst incidences of night traffic fatalities, but this only accounts for 50% of the increased number of traffic fatalities when compared to other cities.</p>
+<p>Since there are many more sober traffic fatalities per million in the data set, to adequately compare between sober and drunk driving fatalities, we can find the percent of hourly traffic fatalities per million per sober fatalities and per drunk driving fatalities. Afterwards, we will be able to directly compare the amplitudes between each city and within each city.</p>
+<pre class="r"><code>drunk &lt;- accident %&gt;%
+  filter(DRUNK_DR &gt; 0) %&gt;%
+  hour_analysis() %&gt;%
+  mutate(drunk = TRUE) %&gt;%
+  group_by(CITY, drunk, YEAR) %&gt;%
+  summarise(fatalities = fatalities/sum(fatalities),
+            HOUR = HOUR,
+            drunk = drunk,
+            .groups = &quot;drop&quot;)
+sober &lt;- accident %&gt;%
+  filter(DRUNK_DR == 0) %&gt;%
+  hour_analysis() %&gt;%
+  mutate(drunk = FALSE) %&gt;%
+  group_by(CITY, drunk, YEAR) %&gt;%
+  summarise(fatalities = fatalities/sum(fatalities),
+            HOUR = HOUR,
+            drunk = drunk,
+            .groups = &quot;drop&quot;)
+
+proportion_drunk &lt;- rbind(sober, drunk)
+
+ave_sober &lt;- sober %&gt;%
+  group_by(CITY, drunk, HOUR) %&gt;%
+  summarise(mean_fatal = mean(fatalities), .groups = &quot;drop&quot;)
+
+ave_drunk &lt;- drunk %&gt;%
+  group_by(CITY, drunk, HOUR) %&gt;%
+  summarise(mean_fatal = mean(fatalities), .groups = &quot;drop&quot;)
+
+rbind(ave_drunk, ave_sober) %&gt;%
+  mutate(drunk = ifelse(drunk, &quot;Drunk Driving&quot;, &quot;Sober&quot;)) %&gt;%
+  ggplot() +
+  aes(x = HOUR, y = mean_fatal, color = drunk) +
+  geom_line() +
+  theme_classic() +
+  scale_color_lancet() +
+  scale_x_continuous(breaks = seq(0, 25, 3),
+                     labels = seq(0, 25, 3) %% 24) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = &quot;Hour&quot;,
+       y = &quot;Conditional Percentage of Traffic Fatalities&quot;,
+       title = str_wrap(
+         paste(&quot;Hourly Conditional Percentage of Traffic Fatalities per&quot;,
+               &quot;Million By City for Drunk Drivers vs. Sober Drivers&quot;), 75),
+       subtitle = &quot;Averaged across 5 years&quot;,
+       caption = &quot;Fig 8: Data from NHTSA (2015-2019) accidents&quot;,
+       color = &quot;&quot;) +
+  facet_wrap(.~CITY) +
+  grids(linetype = &quot;dashed&quot;) +
+  theme(legend.position = &quot;bottom&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/sober_vs_drunk_hourly-1.png" width="672" /></p>
+<p>Controlling for the size of drunk and sober traffic fatalities, most drunk driving traffic fatalities per million occur just after midnight with a trough during the day. Unlike drunk traffic fatalities, sober traffic fatalities have a very minor, if any, hourly seasonal trend. In other words, there does not appear to be an increase in traffic fatalities during the night in most cities. With the following regression we can estimate statistical differences in seasonality of hourly traffic fatalities, as well as when they peak.</p>
+<p><span class="math display">\[ Fatalities_{city, drunk} \sim A_{city, drunk} \cos(Hour_{city,drunk} - D_{city, drunk})\]</span>
+Through a bootstrapped model, we can find estimates of <span class="math inline">\(A_{city,drunk}\)</span> and <span class="math inline">\(D_{city,drunk}\)</span> and comparethe rates of fatalities within cities (sober vs drunk) and between cities (Chicago vs Austin).</p>
+<pre class="r"><code>fit_nls_on_bootstrap_drunk &lt;- function(split) {
+  nls(formula = fatalities ~ 
+        (!drunk)*(
+          (CITY==&quot;Austin&quot;)*A11*cos(2*pi*HOUR/24 - D11) +
+            (CITY==&quot;Boston&quot;)*A21*cos(2*pi*HOUR/24 - D21) +
+            (CITY==&quot;Chicago&quot;)*A31*cos(2*pi*HOUR/24 - D31) +
+            (CITY==&quot;Detroit&quot;)*A41*cos(2*pi*HOUR/24 - D41) +
+            (CITY==&quot;NYC&quot;)*A51*cos(2*pi*HOUR/24 - D51)) +
+        (drunk)*(
+          (CITY==&quot;Austin&quot;)*A12*cos(2*pi*HOUR/24 - D12) +
+            (CITY==&quot;Boston&quot;)*A22*cos(2*pi*HOUR/24 - D22) +
+            (CITY==&quot;Chicago&quot;)*A32*cos(2*pi*HOUR/24 - D32) +
+            (CITY==&quot;Detroit&quot;)*A42*cos(2*pi*HOUR/24 - D42) +
+            (CITY==&quot;NYC&quot;)*A52*cos(2*pi*HOUR/24 - D52)),
+      analysis(split),
+      start = list(A11 = 1, A21 = 1, A31 = 1, A41 = 1, A51 = 1,
+                   A12 = 1, A22 = 1, A32 = 1, A42 = 1, A52 = 1,
+                   D11 = pi, D21 = pi, D31 = pi, D41 = pi, D51 = pi,
+                   D12 = pi, D22 = pi, D32 = pi, D42 = pi, D52 = pi))
+}
+
+bootstrap_model_drunk &lt;- function(df) {
+  boot_models &lt;- df %&gt;%
+    bootstraps(times = 2000, apparent = TRUE) %&gt;%
+    mutate(model = map(splits, fit_nls_on_bootstrap_drunk),
+           coef_info = map(model, tidy))
+  
+  boot_models %&gt;%
+    unnest(coef_info) %&gt;%
+    left_join(int_pctl(boot_models, coef_info), by=&quot;term&quot;) %&gt;%
+    mutate(term = case_when(term == &quot;A11&quot; ~ &quot;A_Austin&quot;,
+                            term == &quot;A21&quot; ~ &quot;A_Boston&quot;,
+                            term == &quot;A31&quot; ~ &quot;A_Chicago&quot;,
+                            term == &quot;A41&quot; ~ &quot;A_Detroit&quot;,
+                            term == &quot;A51&quot; ~ &quot;A_NYC&quot;,
+                            term == &quot;D11&quot; ~ &quot;D_Austin&quot;,
+                            term == &quot;D21&quot; ~ &quot;D_Boston&quot;,
+                            term == &quot;D31&quot; ~ &quot;D_Chicago&quot;,
+                            term == &quot;D41&quot; ~ &quot;D_Detroit&quot;,
+                            term == &quot;D51&quot; ~ &quot;D_NYC&quot;,
+                            term == &quot;A12&quot; ~ &quot;A_Austin_drunk&quot;,
+                            term == &quot;A22&quot; ~ &quot;A_Boston_drunk&quot;,
+                            term == &quot;A32&quot; ~ &quot;A_Chicago_drunk&quot;,
+                            term == &quot;A42&quot; ~ &quot;A_Detroit_drunk&quot;,
+                            term == &quot;A52&quot; ~ &quot;A_NYC_drunk&quot;,
+                            term == &quot;D12&quot; ~ &quot;D_Austin_drunk&quot;,
+                            term == &quot;D22&quot; ~ &quot;D_Boston_drunk&quot;,
+                            term == &quot;D32&quot; ~ &quot;D_Chicago_drunk&quot;,
+                            term == &quot;D42&quot; ~ &quot;D_Detroit_drunk&quot;,
+                            term == &quot;D52&quot; ~ &quot;D_NYC_drunk&quot;))
+}
+
+boot_coef_drunk &lt;- proportion_drunk %&gt;%
+  bootstrap_model_drunk()
+
+adj_drunk &lt;- boot_coef_drunk %&gt;%
+  mutate(city = str_extract(term, &quot;(?&lt;=_)[^_]+&quot;)) %&gt;%
+  filter(str_detect(term, &quot;A_&quot;)) %&gt;%
+  mutate(drunk = str_detect(term, &quot;drunk&quot;)) %&gt;%
+  group_by(id, city, drunk) %&gt;%
+  summarise(positive = estimate &gt; 0, .groups = &quot;drop&quot;)
+
+boot_coef_adj_drunk &lt;- boot_coef_drunk %&gt;%
+  mutate(drunk = str_detect(term, &quot;drunk&quot;),
+         city = str_extract(term, &quot;(?&lt;=_)[^_]+&quot;)) %&gt;%
+  left_join(adj_drunk, by = c(&quot;city&quot;, &quot;id&quot;, &quot;drunk&quot;)) %&gt;%
+  mutate(estimate = case_when(
+    str_detect(term, &quot;A_&quot;) &amp; !positive ~ -estimate,
+    str_detect(term, &quot;D_&quot;) &amp; !positive ~ estimate + pi,
+    TRUE ~ estimate))
+
+drunk_A &lt;- boot_coef_adj_drunk %&gt;%
+  filter(str_detect(term, &quot;A_&quot;)) %&gt;%
+  mutate(term = str_remove(term, &quot;_drunk&quot;)) %&gt;%
+  group_by(term, drunk) %&gt;%
+  summarise(mean_est = median(estimate),
+            q05 = quantile(estimate, 0.05),
+            q95 = quantile(estimate, 0.95),
+            id = id,
+            estimate = estimate, .groups = &quot;drop&quot;) %&gt;%
+  mutate(term = str_remove(term, &quot;A_&quot;),
+         drunk = ifelse(drunk, &quot;Drunk&quot;, &quot;Sober&quot;))</code></pre>
+<div id="amplitude-of-hourly-traffic-fatalities" class="section level4">
+<h4>Amplitude of Hourly Traffic Fatalities</h4>
+<p>Assuming a simple seasonal model, the data suggests that in most cities, there is a clear difference between drunk and sober traffic fatalities. Specifically, drunk traffic fatalities have higher amplitude (larger difference in traffic fatalities between the peaks and trough). Only in Boston is it somewhat difficult to distinguish between the drunk and sober amplitude of traffic fatalities.</p>
+<pre class="r"><code>drunk_A %&gt;%
+  ggplot() +
+  aes(x = estimate, fill = drunk, alpha = 0.3) +
+  geom_histogram(bins = 100) +
+  geom_vline(aes(xintercept = mean_est, color = drunk)) +
+  geom_vline(aes(xintercept = q05, color = drunk), linetype = &quot;dashed&quot;) +
+  geom_vline(aes(xintercept = q95, color = drunk), linetype = &quot;dashed&quot;) +
+  facet_grid(term ~ .) +
+  theme_classic() +
+  labs(title = str_wrap(
+    paste(&quot;Estimated Amplitude of Conditional Percentage Traffic&quot;,
+          &quot;Fatality per million By City for Drunk Drivers vs. Sober&quot;,
+          &quot;Drivers&quot;), 70),
+    subtitle = TeX(paste(&quot;$ Fatalities_{city,drunk} \\sim A_{city,drunk}&quot;,
+                         &quot;\\cos(Hour_{city,drunk} - D_{city,drunk}) $&quot;)),
+    x = &quot;Estimated Amplitude&quot;,
+    y = TeX(&quot;Count of bootstrapped $ \\hat{A}_{city,drunk} $&quot;),
+    fill = &quot;&quot;,
+    caption = &quot;Fig 9: Data from NHTSA (2015 - 2019) accidents&quot;) +
+  scale_fill_lancet() +
+  scale_color_lancet() +
+  grids(linetype = &quot;dashed&quot;) +
+  theme(legend.position = &quot;bottom&quot;) +
+  guides(color = FALSE, alpha = FALSE)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+</div>
+<div id="peak-of-hourly-traffic-fatalities" class="section level4">
+<h4>Peak of Hourly Traffic Fatalities</h4>
+<p>Using <a href="https://en.wikipedia.org/wiki/Directional_statistics">directional statistics</a>, we can estimate the time at which peak traffic fatalities occur in each city. We use directional statistics as the domain, hours, is wrapped (hour 0 is next to hour 23 and hour 1). We can see that every city has the same peak for drunk driving fatalities, 1am. However, for sober traffic fatalities, the peak time is shifted to 5pm, 7pm, and 9pm. These results are all meaningful and statistically significant. We can imagine that most drunk driving fatalities happen at night as most drinking happens at night. Given that most cities’ rush hours end before 7pm, the higher fatalities appear to be driven more by poor visibility on the road. We would need to get average number of active cars per hour to better determine if the rate of fatalities is being driven by a higher number of cars on the road or poorer visibility.</p>
+<pre class="r"><code>drunk_D &lt;- boot_coef_adj_drunk %&gt;%
+  filter(str_detect(term, &quot;D_&quot;)) %&gt;%
+  mutate(estimate = estimate %% (2*pi) - pi,
+         term = str_remove(term, &quot;_drunk&quot;),
+         term = str_remove(term, &quot;D_&quot;),
+         drunk = ifelse(drunk, &quot;Drunk&quot;, &quot;Sober&quot;)) %&gt;%
+  dplyr::select(term, drunk, estimate, id) %&gt;%
+  group_by(term, drunk) %&gt;%
+  summarise(mean = 12/pi*circ.mean(estimate) + 12,
+            sd = 12/pi*sqrt(1/est.kappa(estimate)),
+            estimate = (12*(estimate)/pi) + 12,
+            id = id,
+            .groups = &quot;drop&quot;) %&gt;%
+  mutate(estimate = (estimate - 8) %% 24,
+         mean = (mean - 8) %% 24)
+
+drunk_D %&gt;%
+  ggplot() +
+  aes(x = estimate, fill = drunk, alpha = 0.3) +
+  geom_histogram(bins = 50) +
+  scale_x_continuous(breaks = seq(0, 24, 2),
+                     labels = seq(8, 24 + 8, 2) %% 24) +
+  geom_vline(aes(xintercept = (mean %% 24), color = drunk)) +
+  geom_vline(aes(xintercept = (mean + 1.96*sd), color = drunk), linetype = &quot;dashed&quot;) +
+  geom_vline(aes(xintercept = (mean - 1.96*sd), color = drunk), linetype = &quot;dashed&quot;) +
+  facet_grid(term ~ .) +
+  theme_classic() +
+  scale_fill_lancet() +
+  scale_color_lancet() +
+  labs(title = &quot;Estimate of Peak Hourly Traffic Fatalities&quot;,
+       x = &quot;Hour&quot;,
+       y = TeX(&quot;Counts of bootstrapped $ \\hat{D}_{city,drunk} + \\pi$&quot;),
+       subtitle = TeX(paste(&quot;$ Fatalities_{city,drunk} \\sim A_{city,drunk}&quot;,
+                            &quot;\\cos(Hour_{city,drunk} - D_{city,drunk}) $&quot;)),
+       fill = &quot;City&quot;,
+       caption = &quot;Fig 10: Data from NHTSA accidents&quot;) +
+  grids(linetype = &quot;dashed&quot;) +
+  guides(color = FALSE, alpha = FALSE) +
+  theme(legend.position = &quot;bottom&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>This analysis is not able to conclusively disentangle the effects of drunk driving and poor visibility. Only Boston has a noticeable difference in amplitude between drunk driving fatalities and sober fatalities. Similarly, peak hours for sober vs drunk traffic fatalities do not differentiate cities with high traffic fatalities per million vs cities with low traffic fatalities per million.</p>
+<pre class="r"><code>drunk_A %&gt;%
+  left_join(drunk_D, by=c(&quot;id&quot;, &quot;term&quot;, &quot;drunk&quot;),
+            suffix = c(&quot;.A&quot;, &quot;.D&quot;)) %&gt;%
+  ggplot() +
+  aes(y = estimate.A, x = estimate.D, color = drunk) +
+  geom_point(alpha=0.3) +
+  labs(title = &quot;Scatter plot between estimates of A and D per City&quot;,
+       x = &quot;Estimate of D&quot;,
+       y = &quot;Estimate of A&quot;) +
+  facet_grid(.~term) +
+  scale_color_lancet() +
+  theme_classic()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>We can also see some issues with the estimate as the variance of the estimate for D is related to the estimate of A. More concretely, it is difficult to find the estimate for the min/max of a flat line. As A tends towards 0, the cyclical function <code>A cos(X - D)</code> becomes more linear.</p>
+<p>Unfortunately, this weeks analysis leaves more questions than answers. Hopefully, I can find a data set of accidents and miles driving in each city to have a more complete analysis.</p>
+</div>
+</div>
+</div>
