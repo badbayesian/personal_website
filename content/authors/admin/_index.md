@@ -17,9 +17,9 @@ interests:
 - Evolutionary Game Theory
 - Sous-vide cooking
 organizations:
-- name: University of Chicago
+- name: International Monetary Fund
   url: ""
-role: Recent CS MS Grad
+role: Projects Officer
 social:
 - icon: envelope
   icon_pack: fas
@@ -36,8 +36,8 @@ social:
 superuser: true
 title: Daniel Silva-Inclan
 ---
-Hello, my name is Daniel Silva-Inclan. I am actively seeking job opportunities in both software development and data science. 
+Hello, my name is Daniel Silva-Inclan. I am open to new opportunities in both software development and data science. 
 
-I am interested in building robust software to scale better decision-making. In both my prior endeavors as a Research Assistant at UChicago and a Data Scientist at Civis Analytics, I built prototypes and visualizations of software solutions with domain experts and software engineers. I am most comfortable working in Python, R, bash, git, SQL, and Docker but also have experience with Go and C/C++. My preferred editor is Neovim + Terminator.
+I am interested in building robust software to better scale decision-making and research. In my 3+ years of experience, I have focused in leveraging computational tools to make the research process more efficient and robust. I have built and prototyped various software pipelines and visualizations for economists and other domain experts. I am most comfortable working in Python, R, bash, git, SQL, and Docker but also have experience with Go and C/C++. My preferred editor is Neovim + Terminator.
 
-Outside of work, you can find me cooking new recipes (recently into replicating brown-sugar Boba ice cream) or playing Age of Empires 2.
+Outside of work, you can find me cooking new recipes (big fan of pambazos right now) or playing Age of Empires 2 DE.
