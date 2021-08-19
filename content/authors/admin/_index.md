@@ -12,9 +12,9 @@ education:
     year: 2016
 email: badbayesian@gmail.com
 interests:
+- Optimization and Metaheuristics
 - Causal Inference (with ML and econometrics)
 - Differential Privacy
-- Evolutionary Game Theory
 - Sous-vide cooking
 organizations:
 - name: International Monetary Fund
