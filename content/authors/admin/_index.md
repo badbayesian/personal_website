@@ -38,6 +38,8 @@ title: Daniel Silva-Inclan
 ---
 Hi, I’m Daniel Silva-Inclan. I am open to new opportunities in data science and data engineering.
 
-These days, I work at EY, helping teams create AI and data systems that scale, from GenAI document-intelligence pipelines to ETL platforms on Databricks and Snowflake. My roots are in economics research: at the IMF and Becker Friedman Institute at UChicago where I built optimization frameworks and synthetic data tools that made economic modeling faster and more reliable.
+My work experence spans between being a researcher, data scientist, and data engineer with 7+ years of experience turning complex data problems into tractable ML/AI/stats/econ problems and analytics solutions. These days, I work at EY, where I help teams design, develop, and deploy enterprise-grade systems, from GenAI document-intelligence pipelines to cloud-native ETL workflows on Databricks, Snowflake, and Azure. My roots are in economics research: at the IMF and Becker Friedman Institute at UChicago where I built optimization frameworks and synthetic data tools that made economic modeling faster and more reliable.
+
+My toolkit includes Python (pandas,sklearn, dbt, streamlit), R (tidyverse, shiny, leaflet, data.table), SQL, Docker, Azure(AI Foundry, MLflow, CosmoDB), Snowflake/Databricks, with side experience in Go, C/C++, and Julia -- and I’m always exploring new tools to stay ahead.
 
 Outside of work, you’ll find me tinkering with my home automation setup, self-hosting cloud services, experimenting with sous-vide + smoker recipes, or strategizing my next win in Age of Empires II: DE.
