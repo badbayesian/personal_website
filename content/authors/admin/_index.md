@@ -17,9 +17,9 @@ interests:
 - Differential Privacy
 - Sous-vide cooking
 organizations:
-- name: International Monetary Fund
+- name: EY
   url: ""
-role: Projects Officer
+role: Data Science Manager
 social:
 - icon: envelope
   icon_pack: fas
@@ -36,8 +36,8 @@ social:
 superuser: true
 title: Daniel Silva-Inclan
 ---
-Hello, my name is Daniel Silva-Inclan. I am open to new opportunities in both software development and data science. 
+Hi, I’m Daniel Silva-Inclan. I am open to new opportunities in data science and data engineering.
 
-I am interested in building robust software to better scale decision-making and research. In my 3+ years of experience, I have focused in leveraging computational tools to make the research process more efficient and robust. I have built and prototyped various software pipelines and visualizations for economists and other domain experts. I am most comfortable working in Python, R, bash, git, SQL, and Docker but also have experience with Go and C/C++. My preferred editor is Neovim + Terminator.
+These days, I work at EY, helping teams create AI and data systems that scale, from GenAI document-intelligence pipelines to ETL platforms on Databricks and Snowflake. My roots are in economics research: at the IMF and Becker Friedman Institute at UChicago where I built optimization frameworks and synthetic data tools that made economic modeling faster and more reliable.
 
-Outside of work, you can find me cooking new recipes (big fan of pambazos right now) or playing Age of Empires 2 DE.
+Outside of work, you’ll find me tinkering with my home automation setup, self-hosting cloud services, experimenting with sous-vide + smoker recipes, or strategizing my next win in Age of Empires II: DE.
